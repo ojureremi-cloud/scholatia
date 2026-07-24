@@ -26,4 +26,3 @@ export { default as ThemeToggle } from './ThemeToggle';
 export { default as Textarea } from './Textarea';
 export { default as Tooltip } from './Tooltip';
 export { default as Dropdown } from './Dropdown';
-export { default as Avatar } from './Avatar';
