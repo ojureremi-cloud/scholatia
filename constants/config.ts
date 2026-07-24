@@ -1,8 +1,8 @@
 export const footerLinks = [
   { label: 'Conferences', href: '#conferences' },
   { label: 'Journals', href: '#journals' },
-  { label: 'Researchers', href: '#researchers' },
-  { label: 'Institutions', href: '#universities' },
+  { label: 'People', href: '#people' },
+  { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
   { label: 'Privacy', href: '/privacy' },
@@ -18,7 +18,7 @@ export const platformStatistics = [
   { label: 'Researchers', value: '48,000+' },
   { label: 'Journals', value: '7,800+' },
   { label: 'Conferences', value: '2,100+' },
-  { label: 'Universities', value: '650+' },
+  { label: 'Institutions', value: '650+' },
   { label: 'Publishers', value: '420+' },
   { label: 'Countries', value: '134' },
 ];
@@ -26,15 +26,15 @@ export const platformStatistics = [
 export const companyInfo = {
   name: 'Scholatia',
   description:
-    'A global scholarly infrastructure platform built for researchers, institutions, publishers and the academic community.',
+    'A global scholarly infrastructure platform built for students, researchers, academics, institutions, journals, conferences, publishers and the academic community.',
 };
 
 export const navigationItems = [
   { label: 'Home', href: '#home' },
   { label: 'Conferences', href: '#conferences' },
   { label: 'Journals', href: '#journals' },
-  { label: 'Researchers', href: '#researchers' },
-  { label: 'Universities', href: '#universities' },
+  { label: 'People', href: '#people' },
+  { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];

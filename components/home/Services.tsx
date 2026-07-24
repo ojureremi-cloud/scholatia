@@ -21,7 +21,7 @@ const services = [
   {
     icon: '🏛️',
     title: 'Institutional Engagement Platform',
-    description: 'Empower universities and institutes with collaboration tools, partnerships and analytics.',
+    description: 'Empower institutions and academic organisations with collaboration tools, partnerships and analytics.',
   },
   {
     icon: '🔍',

@@ -1,5 +1,5 @@
 import { Navbar } from '@/components/layout';
-import { Hero, Statistics, Services, WhyScholatia, CallToAction } from '@/components/home';
+import { Hero, Statistics, Ecosystem, Services, WhyScholatia, CallToAction } from '@/components/home';
 import { Footer } from '@/components/layout';
 
 export default function Home() {
@@ -8,6 +8,7 @@ export default function Home() {
       <Navbar />
       <Hero />
       <Statistics />
+      <Ecosystem />
       <Services />
       <WhyScholatia />
       <CallToAction />

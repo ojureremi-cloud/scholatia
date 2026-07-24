@@ -13,7 +13,7 @@ const reasons = [
   },
   {
     title: 'Global Academic Collaboration',
-    description: 'A unified ecosystem for universities, funders and associations to engage at scale with measurable outcomes.',
+    description: 'A unified ecosystem for institutions, funders and associations to engage at scale with measurable outcomes.',
   },
 ];
 

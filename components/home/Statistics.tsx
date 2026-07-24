@@ -6,7 +6,7 @@ const stats = [
   { label: 'Researchers', value: '48,000+' },
   { label: 'Journals', value: '7,800+' },
   { label: 'Conferences', value: '2,100+' },
-  { label: 'Universities', value: '650+' },
+  { label: 'Institutions', value: '650+' },
   { label: 'Publishers', value: '420+' },
   { label: 'Countries', value: '134' },
 ];

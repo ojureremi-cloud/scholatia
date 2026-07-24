@@ -14,7 +14,7 @@ export default function Hero() {
               The World&apos;s Scholarly Infrastructure Platform
             </h1>
             <p className="mt-6 max-w-xl text-lg leading-8 text-slate-600">
-              Connecting researchers, universities, journals, conferences, publishers, research institutes, funding organisations and professional associations within one trusted global ecosystem.
+              Connecting researchers, students, institutions, journals, conferences, publishers and academic communities.
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
               <Button href="#conferences" className="rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800">
@@ -40,7 +40,7 @@ export default function Hero() {
                 </div>
                 <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
                   <p className="text-3xl font-semibold text-slate-900">1.2k</p>
-                  <p className="mt-2 text-sm text-slate-600">Partner universities</p>
+                  <p className="mt-2 text-sm text-slate-600">Partner institutions</p>
                 </div>
               </div>
             </div>

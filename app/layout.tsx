@@ -15,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Scholatia",
-  description: "Global scholarly infrastructure platform for researchers, institutions, journals, conferences and publishers.",
+  description:
+    "A global scholarly infrastructure platform connecting students, researchers, academics, institutions, journals, conferences, publishers, funding organisations and professional associations within one trusted ecosystem.",
 };
 
 export default function RootLayout({

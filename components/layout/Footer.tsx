@@ -3,8 +3,8 @@ import React from 'react';
 const footerLinks = [
   { label: 'Conferences', href: '#conferences' },
   { label: 'Journals', href: '#journals' },
-  { label: 'Researchers', href: '#researchers' },
-  { label: 'Institutions', href: '#universities' },
+  { label: 'People', href: '#people' },
+  { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
   { label: 'Privacy', href: '/privacy' },
@@ -23,7 +23,7 @@ export default function Footer({ className = '' }: FooterProps) {
           <div>
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-sky-700">Scholatia</p>
             <p className="mt-4 max-w-md text-sm leading-7 text-slate-600">
-              A global scholarly infrastructure platform built for researchers, institutions, publishers and the academic community.
+              A global scholarly infrastructure platform built for students, researchers, academics, institutions, journals, conferences, publishers and the academic community.
             </p>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-1">
