@@ -4,3 +4,8 @@ export { default as usePermissions } from './usePermissions';
 export { default as useCurrentUser } from './useCurrentUser';
 export { default as useRequireRole } from './useRequireRole';
 export { default as useTheme } from './useTheme';
+export { default as useProfile } from './useProfile';
+export { default as useIdentity } from './useIdentity';
+export { default as useVerification } from './useVerification';
+export { default as useTrustScore } from './useTrustScore';
+export { default as useResearchProfile } from './useResearchProfile';

@@ -99,6 +99,50 @@ export type TrustFactor =
   | 'Verification level'
   | 'Professional endorsements';
 
+export type ProfilePrivacy = 'Public' | 'Institution Only' | 'Connections' | 'Private' | 'Custom';
+
+export type ProfileView = 'Public Profile' | 'Private Profile' | 'Institution View' | 'Recruiter View' | 'Publisher View' | 'Journal View' | 'Conference View' | 'API View';
+
+export interface ProfileLink {
+  label: string;
+  href: string;
+}
+
+export interface EducationEntry {
+  institution: string;
+  degree: string;
+  field: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface EmploymentEntry {
+  organisation: string;
+  role: string;
+  startDate: string;
+  endDate?: string;
+  description?: string;
+}
+
+export interface PublicationSummary {
+  totalArticles: number;
+  totalCitations: number;
+  hIndex?: number;
+  recentImpact?: string;
+}
+
+export interface TrustMetrics {
+  trustScore: number;
+  verificationScore: number;
+  identityConfidence: number;
+  institutionConfidence: number;
+  publicationConfidence: number;
+  contributionScore: number;
+  communityReputation: number;
+  academicReputation: number;
+}
+
 export interface StudentProfile {
   academicLevel: AcademicLevel;
   programme?: string;
@@ -122,6 +166,60 @@ export interface ScholatiaAcademicIdentity {
   joinedAt: string;
   lastVerifiedAt?: string;
   isVerified: boolean;
+}
+
+export interface SAIDProfile {
+  said: string;
+  displayName: string;
+  accountCategory: AccountCategory;
+  accountType: AccountType;
+  roles: RoleType[];
+  verificationLevel: VerificationLevel;
+  biography?: string;
+  professionalSummary?: string;
+  academicSummary?: string;
+  researchInterests: string[];
+  keywords: string[];
+  disciplines: string[];
+  fieldsOfStudy: string[];
+  education: EducationEntry[];
+  employmentHistory: EmploymentEntry[];
+  institutionHistory: string[];
+  professionalMembership: string[];
+  projects: string[];
+  awards: string[];
+  patents: string[];
+  datasets: string[];
+  software: string[];
+  books: string[];
+  bookChapters: string[];
+  conferencePapers: string[];
+  journalArticles: string[];
+  preprints: string[];
+  technicalReports: string[];
+  grants: string[];
+  teachingExperience: string[];
+  courses: string[];
+  supervision: string[];
+  skills: string[];
+  languages: string[];
+  certifications: string[];
+  volunteerActivities: string[];
+  socialLinks: ProfileLink[];
+  academicLinks: ProfileLink[];
+  privacy: ProfilePrivacy;
+  visibleTo: ProfileView[];
+  trustMetrics: TrustMetrics;
+  publicationSummary: PublicationSummary;
+  orcid?: string;
+  country?: string;
+  department?: string;
+  institution?: string;
+  profilePhotoUrl?: string;
+  qrCodeValue?: string;
+  publicUrl?: string;
+  shortUrl?: string;
+  isPublic: boolean;
 }
 
 export const INDIVIDUAL_ACCOUNT_TYPES: IndividualAccountType[] = [

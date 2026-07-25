@@ -9,3 +9,4 @@ export const authFeature: AuthFeature = {
 };
 
 export * from '@/lib/auth';
+export * from '@/lib/said';
