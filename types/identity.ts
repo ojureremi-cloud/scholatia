@@ -227,6 +227,74 @@ export interface SAIDProfile {
   isPublic: boolean;
 }
 
+export type ConferenceEventType = 'International Conference' | 'National Conference' | 'Regional Conference' | 'Symposium' | 'Workshop' | 'Seminar' | 'Colloquium' | 'Summer School' | 'Winter School' | 'Bootcamp' | 'Hackathon' | 'Research Meeting' | 'Doctoral Consortium' | 'Poster Session' | 'Webinar' | 'Virtual Conference' | 'Hybrid Conference' | 'Training Programme' | 'Executive Education';
+
+export type ConferenceRegistrationAudience = 'Researchers' | 'Students' | 'Institutions' | 'Publishers' | 'Sponsors' | 'Exhibitors' | 'Guests' | 'Media';
+
+export type ConferenceSubmissionType = 'Abstract' | 'Full Paper' | 'Poster' | 'Workshop Proposal' | 'Tutorial Proposal' | 'Panel Proposal' | 'Demo' | 'Dataset' | 'Software';
+
+export type ConferenceCommitteeRole = 'Conference Chair' | 'Co-Chair' | 'Programme Chair' | 'Technical Chair' | 'Publication Chair' | 'Finance Chair' | 'Local Organising Committee' | 'Scientific Committee' | 'Review Committee' | 'Session Chairs' | 'Student Volunteers';
+
+export interface ConferenceCommitteeMember {
+  role: ConferenceCommitteeRole;
+  name: string;
+  affiliation?: string;
+  email?: string;
+}
+
+export interface ConferenceRegistrationOption {
+  audience: ConferenceRegistrationAudience;
+  fee?: string;
+  deadline?: string;
+  status: 'Open' | 'Closed' | 'Limited' | 'Upcoming';
+}
+
+export interface ConferenceSubmissionOption {
+  type: ConferenceSubmissionType;
+  deadline?: string;
+  required: boolean;
+}
+
+export interface ConferenceProfile {
+  conferenceId: string;
+  conferenceCode: string;
+  title: string;
+  shortTitle?: string;
+  eventType: ConferenceEventType;
+  theme?: string;
+  subTheme?: string;
+  description?: string;
+  objectives?: string[];
+  venue?: string;
+  virtualPlatform?: string;
+  country?: string;
+  city?: string;
+  institution?: string;
+  startDate?: string;
+  endDate?: string;
+  timezone?: string;
+  language?: string;
+  posterImage?: string;
+  logo?: string;
+  organisers: string[];
+  sponsors: string[];
+  partners: string[];
+  registrationStatus: 'Open' | 'Closed' | 'Limited' | 'Upcoming' | 'Draft';
+  submissionStatus: 'Open' | 'Closed' | 'Limited' | 'Upcoming' | 'Draft';
+  verificationStatus: InstitutionVerificationStatus;
+  trustScore: number;
+  researchAreas: string[];
+  keywords: string[];
+  committee: ConferenceCommitteeMember[];
+  registrations: ConferenceRegistrationOption[];
+  submissions: ConferenceSubmissionOption[];
+  speakers: string[];
+  schedule?: string[];
+  registrationUrl?: string;
+  submissionUrl?: string;
+  website?: string;
+}
+
 export type InstitutionVerificationStatus = 'Pending' | 'Email Verified' | 'Domain Verified' | 'Document Verified' | 'Government Recognised' | 'Accredited' | 'Verified' | 'Trusted';
 
 export interface InstitutionAffiliation {
@@ -364,4 +432,63 @@ export const INSTITUTION_TYPES: InstitutionType[] = [
   'Think Tank',
   'Research Network',
   'International Organisation',
+];
+
+export const CONFERENCE_EVENT_TYPES: ConferenceEventType[] = [
+  'International Conference',
+  'National Conference',
+  'Regional Conference',
+  'Symposium',
+  'Workshop',
+  'Seminar',
+  'Colloquium',
+  'Summer School',
+  'Winter School',
+  'Bootcamp',
+  'Hackathon',
+  'Research Meeting',
+  'Doctoral Consortium',
+  'Poster Session',
+  'Webinar',
+  'Virtual Conference',
+  'Hybrid Conference',
+  'Training Programme',
+  'Executive Education',
+];
+
+export const CONFERENCE_REGISTRATION_AUDIENCES: ConferenceRegistrationAudience[] = [
+  'Researchers',
+  'Students',
+  'Institutions',
+  'Publishers',
+  'Sponsors',
+  'Exhibitors',
+  'Guests',
+  'Media',
+];
+
+export const CONFERENCE_SUBMISSION_TYPES: ConferenceSubmissionType[] = [
+  'Abstract',
+  'Full Paper',
+  'Poster',
+  'Workshop Proposal',
+  'Tutorial Proposal',
+  'Panel Proposal',
+  'Demo',
+  'Dataset',
+  'Software',
+];
+
+export const CONFERENCE_COMMITTEE_ROLES: ConferenceCommitteeRole[] = [
+  'Conference Chair',
+  'Co-Chair',
+  'Programme Chair',
+  'Technical Chair',
+  'Publication Chair',
+  'Finance Chair',
+  'Local Organising Committee',
+  'Scientific Committee',
+  'Review Committee',
+  'Session Chairs',
+  'Student Volunteers',
 ];

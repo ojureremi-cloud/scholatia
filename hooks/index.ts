@@ -13,3 +13,8 @@ export { default as useInstitution } from './useInstitution';
 export { default as useAffiliations } from './useAffiliations';
 export { default as useInstitutionVerification } from './useInstitutionVerification';
 export { default as useInstitutionSearch } from './useInstitutionSearch';
+export { default as useConference } from './useConference';
+export { default as useConferenceSearch } from './useConferenceSearch';
+export { default as useConferenceRegistration } from './useConferenceRegistration';
+export { default as useConferenceCommittee } from './useConferenceCommittee';
+export { default as useConferenceSubmissions } from './useConferenceSubmissions';
