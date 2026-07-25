@@ -64,15 +64,20 @@ export type InstitutionType =
   | 'Institution'
   | 'University'
   | 'College'
-  | 'Academy'
   | 'Polytechnic'
+  | 'Academy'
   | 'Research Institute'
-  | 'Professional School'
   | 'Government Research Centre'
+  | 'Professional School'
   | 'Library'
   | 'Think Tank'
+  | 'Funding Organisation'
+  | 'Professional Association'
+  | 'Publisher'
   | 'Research Network'
-  | 'International Education Organisation';
+  | 'Innovation Hub'
+  | 'Training Centre'
+  | 'International Organisation';
 
 export enum VerificationLevel {
   Unverified = 0,
@@ -222,6 +227,73 @@ export interface SAIDProfile {
   isPublic: boolean;
 }
 
+export type InstitutionVerificationStatus = 'Pending' | 'Email Verified' | 'Domain Verified' | 'Document Verified' | 'Government Recognised' | 'Accredited' | 'Verified' | 'Trusted';
+
+export interface InstitutionAffiliation {
+  personId: string;
+  name: string;
+  role: string;
+  current: boolean;
+  previous: boolean;
+  startDate?: string;
+  endDate?: string;
+  primary: boolean;
+  institutionId?: string;
+  department?: string;
+}
+
+export interface InstitutionVerificationRecord {
+  type: 'Email' | 'Domain' | 'Document' | 'Government' | 'Accreditation' | 'Representative';
+  status: InstitutionVerificationStatus;
+  verifiedAt?: string;
+  details?: string;
+}
+
+export interface InstitutionProfile {
+  institutionId: string;
+  institutionName: string;
+  shortName?: string;
+  acronym?: string;
+  institutionType: InstitutionType;
+  country?: string;
+  stateProvince?: string;
+  city?: string;
+  website?: string;
+  officialEmail?: string;
+  officialPhone?: string;
+  logo?: string;
+  bannerImage?: string;
+  description?: string;
+  mission?: string;
+  vision?: string;
+  history?: string;
+  accreditation?: string;
+  ranking?: string;
+  researchAreas: string[];
+  academicDisciplines: string[];
+  campusLocations: string[];
+  socialMedia: ProfileLink[];
+  officialDocuments: ProfileLink[];
+  verificationStatus: InstitutionVerificationStatus;
+  trustScore: number;
+  verificationHistory: InstitutionVerificationRecord[];
+  faculties: string[];
+  schools: string[];
+  colleges: string[];
+  departments: string[];
+  researchCentres: string[];
+  institutes: string[];
+  libraries: string[];
+  administrativeUnits: string[];
+  campuses: string[];
+  affiliations: InstitutionAffiliation[];
+  studentCount?: number;
+  facultyCount?: number;
+  programCount?: number;
+  foundedYear?: number;
+  lastVerifiedAt?: string;
+}
+
 export const INDIVIDUAL_ACCOUNT_TYPES: IndividualAccountType[] = [
   'Student',
   'Researcher',
@@ -291,5 +363,5 @@ export const INSTITUTION_TYPES: InstitutionType[] = [
   'Library',
   'Think Tank',
   'Research Network',
-  'International Education Organisation',
+  'International Organisation',
 ];

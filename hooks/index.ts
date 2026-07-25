@@ -9,3 +9,7 @@ export { default as useIdentity } from './useIdentity';
 export { default as useVerification } from './useVerification';
 export { default as useTrustScore } from './useTrustScore';
 export { default as useResearchProfile } from './useResearchProfile';
+export { default as useInstitution } from './useInstitution';
+export { default as useAffiliations } from './useAffiliations';
+export { default as useInstitutionVerification } from './useInstitutionVerification';
+export { default as useInstitutionSearch } from './useInstitutionSearch';
