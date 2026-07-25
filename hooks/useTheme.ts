@@ -5,15 +5,17 @@ import { useEffect, useMemo, useState } from 'react';
 type ThemeMode = 'light' | 'dark' | 'system';
 const STORAGE_KEY = 'scholatia-theme-mode';
 
-export default function useTheme() {
-  const [theme, setTheme] = useState<ThemeMode>('system');
+function getInitialTheme(): ThemeMode {
+  if (typeof window === 'undefined') {
+    return 'system';
+  }
 
-  useEffect(() => {
-    const saved = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
-    if (saved) {
-      setTheme(saved);
-    }
-  }, []);
+  const saved = window.localStorage.getItem(STORAGE_KEY) as ThemeMode | null;
+  return saved ?? 'system';
+}
+
+export default function useTheme() {
+  const [theme, setTheme] = useState<ThemeMode>(getInitialTheme);
 
   useEffect(() => {
     const applyTheme = (mode: ThemeMode) => {
