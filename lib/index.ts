@@ -4,3 +4,4 @@ export * from './auth';
 export * from './said';
 export * from './institutions';
 export * from './conferences';
+export * from './journals';

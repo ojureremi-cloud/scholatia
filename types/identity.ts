@@ -235,6 +235,16 @@ export type ConferenceSubmissionType = 'Abstract' | 'Full Paper' | 'Poster' | 'W
 
 export type ConferenceCommitteeRole = 'Conference Chair' | 'Co-Chair' | 'Programme Chair' | 'Technical Chair' | 'Publication Chair' | 'Finance Chair' | 'Local Organising Committee' | 'Scientific Committee' | 'Review Committee' | 'Session Chairs' | 'Student Volunteers';
 
+export type JournalPublicationType = 'Journal' | 'Book' | 'Book Series' | 'Conference Proceedings' | 'Edited Volume' | 'Magazine' | 'Newsletter' | 'Technical Report' | 'Working Paper' | 'Preprint Server';
+
+export type JournalSubmissionType = 'Research Article' | 'Review Article' | 'Short Communication' | 'Case Study' | 'Editorial' | 'Letter' | 'Perspective' | 'Commentary' | 'Dataset' | 'Software Paper' | 'Protocol' | 'Book Review';
+
+export type ReviewModel = 'Single Blind' | 'Double Blind' | 'Open Review' | 'Transparent Review' | 'Post Publication Review';
+
+export type OpenAccessStatus = 'Open Access' | 'Hybrid' | 'Subscription' | 'Diamond' | 'Gold' | 'Green' | 'Bronze';
+
+export type PublicationWorkflowStage = 'Submission' | 'Editorial Screening' | 'Reviewer Assignment' | 'Peer Review' | 'Decision' | 'Revision' | 'Acceptance' | 'Copyediting' | 'Typesetting' | 'Proofreading' | 'Publication' | 'Archiving';
+
 export interface ConferenceCommitteeMember {
   role: ConferenceCommitteeRole;
   name: string;
@@ -293,6 +303,66 @@ export interface ConferenceProfile {
   registrationUrl?: string;
   submissionUrl?: string;
   website?: string;
+}
+
+export interface EditorialStructureMember {
+  role: string;
+  name: string;
+  affiliation?: string;
+}
+
+export interface ArticleSummary {
+  title: string;
+  authors: string[];
+  status: 'Accepted' | 'Under Review' | 'Draft';
+}
+
+export interface IssueSummary {
+  issueNumber: string;
+  year: string;
+  status: 'Published' | 'Upcoming';
+}
+
+export interface VolumeSummary {
+  volumeNumber: string;
+  year: string;
+  status: 'Published' | 'Upcoming';
+}
+
+export interface JournalProfile {
+  journalId: string;
+  journalTitle: string;
+  shortTitle?: string;
+  issn?: string;
+  eissn?: string;
+  publicationType: JournalPublicationType;
+  publisher?: string;
+  institution?: string;
+  country?: string;
+  language?: string;
+  discipline?: string;
+  researchAreas: string[];
+  aimsAndScope?: string;
+  editorialPolicy?: string;
+  openAccessStatus: OpenAccessStatus;
+  publicationFrequency?: string;
+  reviewModel: ReviewModel;
+  indexingServices: string[];
+  website?: string;
+  verificationStatus: InstitutionVerificationStatus;
+  trustScore: number;
+  editorialStructure: EditorialStructureMember[];
+  submissionTypes: JournalSubmissionType[];
+  peerReviewModes: ReviewModel[];
+  workflow: PublicationWorkflowStage[];
+  editors: string[];
+  reviewBoard: string[];
+  productionTeam: string[];
+  publishingStaff: string[];
+  articles: ArticleSummary[];
+  issues: IssueSummary[];
+  volumes: VolumeSummary[];
+  latestIssue?: string;
 }
 
 export type InstitutionVerificationStatus = 'Pending' | 'Email Verified' | 'Domain Verified' | 'Document Verified' | 'Government Recognised' | 'Accredited' | 'Verified' | 'Trusted';
@@ -491,4 +561,40 @@ export const CONFERENCE_COMMITTEE_ROLES: ConferenceCommitteeRole[] = [
   'Review Committee',
   'Session Chairs',
   'Student Volunteers',
+];
+
+export const JOURNAL_PUBLICATION_TYPES: JournalPublicationType[] = [
+  'Journal',
+  'Book',
+  'Book Series',
+  'Conference Proceedings',
+  'Edited Volume',
+  'Magazine',
+  'Newsletter',
+  'Technical Report',
+  'Working Paper',
+  'Preprint Server',
+];
+
+export const JOURNAL_SUBMISSION_TYPES: JournalSubmissionType[] = [
+  'Research Article',
+  'Review Article',
+  'Short Communication',
+  'Case Study',
+  'Editorial',
+  'Letter',
+  'Perspective',
+  'Commentary',
+  'Dataset',
+  'Software Paper',
+  'Protocol',
+  'Book Review',
+];
+
+export const REVIEW_MODELS: ReviewModel[] = [
+  'Single Blind',
+  'Double Blind',
+  'Open Review',
+  'Transparent Review',
+  'Post Publication Review',
 ];
