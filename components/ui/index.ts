@@ -26,3 +26,8 @@ export { default as ThemeToggle } from './ThemeToggle';
 export { default as Textarea } from './Textarea';
 export { default as Tooltip } from './Tooltip';
 export { default as Dropdown } from './Dropdown';
+export { default as IdentityCard } from './IdentityCard';
+export { default as VerificationBadge } from './VerificationBadge';
+export { default as TrustBadge } from './TrustBadge';
+export { default as RoleBadge } from './RoleBadge';
+export { default as InstitutionBadge } from './InstitutionBadge';
