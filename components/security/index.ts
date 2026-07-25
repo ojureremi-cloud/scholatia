@@ -1,6 +1,13 @@
 export { default as LoginForm } from './LoginForm';
 export { default as RegistrationForm } from './RegistrationForm';
 export { default as PasswordResetForm } from './PasswordResetForm';
+export { default as ForgotPasswordForm } from './ForgotPasswordForm';
+export { default as ResetPasswordForm } from './ResetPasswordForm';
+export { default as EmailVerificationCard } from './EmailVerificationCard';
+export { default as AccountVerificationCard } from './AccountVerificationCard';
+export { default as MfaVerificationCard } from './MfaVerificationCard';
+export { default as SessionTimeoutCard } from './SessionTimeoutCard';
+export { default as DeviceVerificationCard } from './DeviceVerificationCard';
 export { default as VerificationBanner } from './VerificationBanner';
 export { default as SecuritySettingsCard } from './SecuritySettingsCard';
 export { default as DeviceCard } from './DeviceCard';

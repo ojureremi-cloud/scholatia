@@ -1,21 +1,32 @@
 import type { RoleType } from '@/types/identity';
 import Badge from './Badge';
 
-const roleVariants: Record<RoleType, Parameters<typeof Badge>[0]['variant']> = {
+const roleVariants: Partial<Record<RoleType, Parameters<typeof Badge>[0]['variant']>> = {
   Student: 'info',
   Researcher: 'info',
   Lecturer: 'info',
   Professor: 'info',
-  Reviewer: 'warning',
-  Editor: 'warning',
-  Author: 'success',
-  Mentor: 'success',
-  'Conference Participant': 'info',
+  'Academic Staff': 'info',
+  'University Administrator': 'danger',
   'Institution Administrator': 'danger',
-  'Journal Administrator': 'danger',
+  'Journal Editor': 'warning',
+  Reviewer: 'warning',
+  'Conference Organizer': 'info',
   Publisher: 'danger',
-  'Funding Organisation Administrator': 'danger',
-  'Professional Association Administrator': 'danger',
+  'Funding Organisation': 'danger',
+  'Professional Association': 'danger',
+  'Government Agency': 'danger',
+  'Research Institute': 'info',
+  Academy: 'info',
+  College: 'info',
+  Polytechnic: 'info',
+  University: 'info',
+  Library: 'info',
+  'Industry Partner': 'success',
+  Employer: 'success',
+  Recruiter: 'success',
+  'System Administrator': 'danger',
+  'Super Administrator': 'danger',
 };
 
 type RoleBadgeProps = {

@@ -5,6 +5,7 @@ export type IndividualAccountType =
   | 'Researcher'
   | 'Lecturer'
   | 'Professor'
+  | 'Academic Staff'
   | 'Industry Professional'
   | 'Reviewer'
   | 'Editor'
@@ -12,11 +13,21 @@ export type IndividualAccountType =
 
 export type OrganisationAccountType =
   | 'Institution'
+  | 'University'
+  | 'College'
+  | 'Academy'
+  | 'Polytechnic'
+  | 'Research Institute'
+  | 'Library'
   | 'Journal'
   | 'Conference'
   | 'Publisher'
   | 'Funding Organisation'
-  | 'Professional Association';
+  | 'Professional Association'
+  | 'Government Agency'
+  | 'Industry Partner'
+  | 'Employer'
+  | 'Recruiter';
 
 export type AccountType = IndividualAccountType | OrganisationAccountType;
 
@@ -25,39 +36,55 @@ export type RoleType =
   | 'Researcher'
   | 'Lecturer'
   | 'Professor'
-  | 'Reviewer'
-  | 'Editor'
-  | 'Author'
-  | 'Mentor'
-  | 'Conference Participant'
+  | 'Academic Staff'
+  | 'University Administrator'
   | 'Institution Administrator'
-  | 'Journal Administrator'
+  | 'Journal Editor'
+  | 'Reviewer'
+  | 'Conference Organizer'
   | 'Publisher'
-  | 'Funding Organisation Administrator'
-  | 'Professional Association Administrator';
+  | 'Funding Organisation'
+  | 'Professional Association'
+  | 'Government Agency'
+  | 'Research Institute'
+  | 'Academy'
+  | 'College'
+  | 'Polytechnic'
+  | 'University'
+  | 'Library'
+  | 'Industry Partner'
+  | 'Employer'
+  | 'Recruiter'
+  | 'System Administrator'
+  | 'Super Administrator';
+
+export type AcademicLevel = 'Undergraduate' | 'Postgraduate' | 'Doctoral' | 'Professional' | 'Researcher' | 'Other';
 
 export type InstitutionType =
+  | 'Institution'
   | 'University'
-  | 'College of Education'
-  | 'Polytechnic'
-  | 'Institute'
+  | 'College'
   | 'Academy'
-  | 'Research Centre'
-  | 'Laboratory'
-  | 'Teaching Hospital'
+  | 'Polytechnic'
+  | 'Research Institute'
   | 'Professional School'
+  | 'Government Research Centre'
+  | 'Library'
   | 'Think Tank'
-  | 'Government Research Organisation'
+  | 'Research Network'
   | 'International Education Organisation';
 
 export enum VerificationLevel {
   Unverified = 0,
   EmailVerified = 1,
-  PhoneVerified = 2,
+  IdentityVerified = 2,
   InstitutionVerified = 3,
-  IdentityVerified = 4,
-  ResearchVerified = 5,
-  FullyTrusted = 6,
+  OrganisationVerified = 4,
+  ORCIDLinked = 5,
+  PublicationVerified = 6,
+  PeerReviewed = 7,
+  Trusted = 8,
+  VerifiedExpert = 9,
 }
 
 export type TrustFactor =
@@ -72,6 +99,15 @@ export type TrustFactor =
   | 'Verification level'
   | 'Professional endorsements';
 
+export interface StudentProfile {
+  academicLevel: AcademicLevel;
+  programme?: string;
+  department?: string;
+  expectedGraduationYear?: number;
+  institutionId?: string;
+  studentIdentityBadge?: string;
+}
+
 export interface ScholatiaAcademicIdentity {
   said: string;
   displayName: string;
@@ -82,6 +118,7 @@ export interface ScholatiaAcademicIdentity {
   trustScore?: number;
   affiliatedInstitution?: string;
   institutionType?: InstitutionType;
+  studentProfile?: StudentProfile;
   joinedAt: string;
   lastVerifiedAt?: string;
   isVerified: boolean;
@@ -92,6 +129,7 @@ export const INDIVIDUAL_ACCOUNT_TYPES: IndividualAccountType[] = [
   'Researcher',
   'Lecturer',
   'Professor',
+  'Academic Staff',
   'Industry Professional',
   'Reviewer',
   'Editor',
@@ -100,21 +138,34 @@ export const INDIVIDUAL_ACCOUNT_TYPES: IndividualAccountType[] = [
 
 export const ORGANISATION_ACCOUNT_TYPES: OrganisationAccountType[] = [
   'Institution',
+  'University',
+  'College',
+  'Academy',
+  'Polytechnic',
+  'Research Institute',
+  'Library',
   'Journal',
   'Conference',
   'Publisher',
   'Funding Organisation',
   'Professional Association',
+  'Government Agency',
+  'Industry Partner',
+  'Employer',
+  'Recruiter',
 ];
 
 export const VERIFICATION_LEVEL_LABELS: Record<VerificationLevel, string> = {
   [VerificationLevel.Unverified]: 'Unverified',
   [VerificationLevel.EmailVerified]: 'Email Verified',
-  [VerificationLevel.PhoneVerified]: 'Phone Verified',
-  [VerificationLevel.InstitutionVerified]: 'Institution Verified',
   [VerificationLevel.IdentityVerified]: 'Identity Verified',
-  [VerificationLevel.ResearchVerified]: 'Research Verified',
-  [VerificationLevel.FullyTrusted]: 'Fully Trusted Scholatia Member',
+  [VerificationLevel.InstitutionVerified]: 'Institution Verified',
+  [VerificationLevel.OrganisationVerified]: 'Organisation Verified',
+  [VerificationLevel.ORCIDLinked]: 'ORCID Linked',
+  [VerificationLevel.PublicationVerified]: 'Publication Verified',
+  [VerificationLevel.PeerReviewed]: 'Peer Reviewed',
+  [VerificationLevel.Trusted]: 'Trusted',
+  [VerificationLevel.VerifiedExpert]: 'Verified Expert',
 };
 
 export const TRUST_FACTORS: TrustFactor[] = [
@@ -131,16 +182,16 @@ export const TRUST_FACTORS: TrustFactor[] = [
 ];
 
 export const INSTITUTION_TYPES: InstitutionType[] = [
+  'Institution',
   'University',
-  'College of Education',
-  'Polytechnic',
-  'Institute',
+  'College',
   'Academy',
-  'Research Centre',
-  'Laboratory',
-  'Teaching Hospital',
+  'Polytechnic',
+  'Research Institute',
   'Professional School',
+  'Government Research Centre',
+  'Library',
   'Think Tank',
-  'Government Research Organisation',
+  'Research Network',
   'International Education Organisation',
 ];

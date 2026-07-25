@@ -1,4 +1,4 @@
-import type { AccountType, RoleType } from './identity';
+import type { AccountType, RoleType, StudentProfile, VerificationLevel } from './identity';
 
 export type AuthProviderType =
   | 'EmailPassword'
@@ -37,20 +37,40 @@ export type PermissionKey =
   | 'manage:users'
   | 'manage:roles'
   | 'manage:permissions'
-  | 'manage:access';
+  | 'manage:access'
+  | 'manage:verification'
+  | 'manage:students'
+  | 'manage:institutions'
+  | 'manage:content'
+  | 'manage:identity';
 
-export type PermissionGroup = {
-  key: string;
+export type PermissionGroupKey = 'profile' | 'session' | 'security' | 'audit' | 'identity' | 'student' | 'institution' | 'content' | 'administration';
+
+export interface Permission {
+  key: PermissionKey;
   label: string;
-  permissions: PermissionKey[];
-};
+  description: string;
+  group: PermissionGroupKey;
+}
 
-export type RoleDefinition = {
-  name: RoleType;
+export interface PermissionGroup {
+  key: PermissionGroupKey;
+  label: string;
   description: string;
   permissions: PermissionKey[];
-  inherits?: RoleType[];
-};
+}
+
+export interface RoleDefinition {
+  name: RoleType;
+  displayName: string;
+  description: string;
+  permissions: PermissionKey[];
+  hierarchy: RoleType[];
+  badgeColour: string;
+  icon: string;
+  trustRequirements: readonly string[];
+  verificationRequirements: readonly VerificationLevel[];
+}
 
 export type PermissionScope = 'global' | 'organization' | 'institution' | 'resource';
 
@@ -74,10 +94,24 @@ export type MfaConfiguration = {
   enrolledAt?: string;
 };
 
+export interface AuthUser {
+  id: string;
+  displayName: string;
+  email: string;
+  roles: RoleType[];
+  accountType: AccountType;
+  verificationLevel: VerificationLevel;
+  trustScore?: number;
+  institutionId?: string;
+  studentProfile?: StudentProfile;
+}
+
+export type DeviceType = 'Desktop' | 'Laptop' | 'Tablet' | 'Mobile' | 'Browser';
+
 export type DeviceSession = {
   sessionId: string;
   deviceName: string;
-  deviceType: 'Desktop' | 'Laptop' | 'Tablet' | 'Mobile' | 'Browser';
+  deviceType: DeviceType;
   ipAddress?: string;
   location?: string;
   createdAt: string;
@@ -85,6 +119,28 @@ export type DeviceSession = {
   trusted: boolean;
   currentSession: boolean;
 };
+
+export interface SessionState {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string;
+  refreshExpiresAt: string;
+  rememberMe: boolean;
+  idleTimeoutMinutes: number;
+  deviceId: string;
+  trustedDevice: boolean;
+  revoked: boolean;
+  lastActivityAt: string;
+}
+
+export interface TrustedDevice {
+  deviceId: string;
+  name: string;
+  deviceType: DeviceType;
+  createdAt: string;
+  lastSeenAt: string;
+  trusted: boolean;
+}
 
 export type SessionPolicy = {
   rememberMe: boolean;
@@ -102,6 +158,8 @@ export type AuditAction =
   | 'ProfileUpdate'
   | 'AdminAction';
 
+export type AuditSeverity = 'info' | 'warning' | 'critical';
+
 export type AuditRecord = {
   id: string;
   actorId: string;
@@ -110,7 +168,12 @@ export type AuditRecord = {
   details?: string;
   ipAddress?: string;
   userAgent?: string;
+  severity?: AuditSeverity;
 };
+
+export interface SecurityEvent extends AuditRecord {
+  category: 'authentication' | 'authorization' | 'verification' | 'session' | 'device' | 'admin' | 'policy';
+}
 
 export interface SecurityProfile {
   userId: string;
@@ -125,6 +188,36 @@ export interface SecurityProfile {
   activeSessions: DeviceSession[];
   mustResetPassword: boolean;
   lastPasswordChangeAt?: string;
+}
+
+export interface UserRoleAssignment {
+  role: RoleType;
+  grantedAt: string;
+  grantedBy?: string;
+  scope?: PermissionScope;
+}
+
+export interface AccessPolicy {
+  id: string;
+  name: string;
+  description: string;
+  allowedRoles: readonly RoleType[];
+  requiredPermissions: readonly PermissionKey[];
+  minimumVerification: VerificationLevel;
+  minimumTrustScore?: number;
+  scope: PermissionScope;
+  effect: 'allow' | 'deny';
+}
+
+export interface ZeroTrustSignals {
+  deviceTrustScore: number;
+  riskScore: number;
+  ipAddress?: string;
+  geoLocation?: string;
+  suspiciousLogin: boolean;
+  impossibleTravel: boolean;
+  rateLimited: boolean;
+  passwordStrength: 'weak' | 'fair' | 'good' | 'strong';
 }
 
 export const AUTH_PROVIDER_LABELS: Record<AuthProviderType, string> = {

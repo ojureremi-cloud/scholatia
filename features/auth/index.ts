@@ -7,3 +7,5 @@ export const authFeature: AuthFeature = {
   signInUrl: '/login',
   signUpUrl: '/register',
 };
+
+export * from '@/lib/auth';

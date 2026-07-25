@@ -1,15 +1,18 @@
-import type { VerificationLevel } from '@/types/identity';
+import { VerificationLevel } from '@/types/identity';
 import Badge from './Badge';
 import { VERIFICATION_LEVEL_LABELS } from '@/types/identity';
 
 const verificationStyles: Record<VerificationLevel, Parameters<typeof Badge>[0]['variant']> = {
-  0: 'danger',
-  1: 'info',
-  2: 'info',
-  3: 'success',
-  4: 'success',
-  5: 'success',
-  6: 'success',
+  [VerificationLevel.Unverified]: 'danger',
+  [VerificationLevel.EmailVerified]: 'info',
+  [VerificationLevel.IdentityVerified]: 'info',
+  [VerificationLevel.InstitutionVerified]: 'success',
+  [VerificationLevel.OrganisationVerified]: 'success',
+  [VerificationLevel.ORCIDLinked]: 'success',
+  [VerificationLevel.PublicationVerified]: 'success',
+  [VerificationLevel.PeerReviewed]: 'success',
+  [VerificationLevel.Trusted]: 'success',
+  [VerificationLevel.VerifiedExpert]: 'success',
 };
 
 type VerificationBadgeProps = {
