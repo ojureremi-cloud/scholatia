@@ -1,0 +1,46 @@
+{
+  "name": "Scholatia Local AI",
+  "version": "1.0.0",
+  "schema": "v1",
+
+  models: [
+    {
+      "name": "Qwen 2.5 Coder Local",
+      "provider": "ollama",
+      "model": "qwen2.5-coder:1.5b",
+      "roles": [
+        "chat",
+        "edit",
+        "apply",
+        "autocomplete"
+      ]
+    }
+  ],
+
+  context: [
+    {
+      "provider": "code"
+    },
+    {
+      "provider": "diff"
+    },
+    {
+      "provider": "terminal"
+    }
+  ],
+
+  tabAutocompleteModel: {
+    "title": "Qwen 2.5 Coder Local",
+    "provider": "ollama",
+    "model": "qwen2.5-coder:1.5b"
+  },
+
+  "functions": [
+    {
+      "name": "read_currently_open_file",
+      "arguments": {
+        "filepath": "."
+      }
+    }
+  ]
+}
