@@ -5,3 +5,5 @@ export * from './said';
 export * from './institutions';
 export * from './conferences';
 export * from './journals';
+export * from './research';
+export * from './lifecycle';

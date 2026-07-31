@@ -1,4 +1,6 @@
 import type { PublicationEntry } from '@/constants/placeholder-profile';
+import type { ResearchLifecycleStageId } from '@/types/research';
+import { ResearchLifecycleEngine } from '@/lib/lifecycle';
 
 export type WorkspaceProjectStatus = 'active' | 'completed' | 'draft' | 'planned' | 'on-hold';
 
@@ -52,12 +54,19 @@ export interface CollaborationRequest {
   researchAreas: string[];
 }
 
+export interface PipelineStageItem {
+  project: string;
+  detail: string;
+  /** Canonical research lifecycle stage the item belongs to. */
+  stageId: ResearchLifecycleStageId;
+}
+
 export interface PipelineStage {
-  id: string;
+  id: ResearchLifecycleStageId;
   name: string;
   description: string;
   icon: string;
-  items: { project: string; detail: string }[];
+  items: PipelineStageItem[];
 }
 
 export interface FundingStatusEntry {
@@ -476,52 +485,36 @@ export const COLLABORATION_REQUESTS: CollaborationRequest[] = [
   },
 ];
 
-export const RESEARCH_PIPELINE: PipelineStage[] = [
-  {
-    id: 'pipeline-ideation',
-    name: 'Ideation',
-    description: 'Concept development and hypothesis formation',
-    icon: '💡',
-    items: [
-      { project: 'Speech Recognition for Endangered Languages', detail: 'Scoping study' },
-      { project: 'Multimodal Sign Language Processing', detail: 'Preliminary review' },
-    ],
-  },
-  {
-    id: 'pipeline-funding',
-    name: 'Funding',
-    description: 'Securing financial support and resources',
-    icon: '💰',
-    items: [{ project: 'Cross-Lingual Evaluation Benchmark', detail: 'Extension proposal under review' }],
-  },
-  {
-    id: 'pipeline-execution',
-    name: 'Execution',
-    description: 'Active research and data collection',
-    icon: '⚙️',
-    items: [
-      { project: 'Multilingual Parsing Framework', detail: 'Training runs' },
-      { project: 'Low-Resource Language Toolkit', detail: 'Tooling release' },
-    ],
-  },
-  {
-    id: 'pipeline-analysis',
-    name: 'Analysis',
-    description: 'Processing and interpretation of results',
-    icon: '🔬',
-    items: [{ project: 'Low-Resource Language Toolkit', detail: 'Evaluation suite' }],
-  },
-  {
-    id: 'pipeline-dissemination',
-    name: 'Dissemination',
-    description: 'Publication and knowledge sharing',
-    icon: '📢',
-    items: [
-      { project: 'Speech Processing Roadmap', detail: 'Preprint published' },
-      { project: 'EMNLP 2026 Submission', detail: 'In preparation' },
-    ],
-  },
-];
+const PIPELINE_ITEMS: Record<ResearchLifecycleStageId, { project: string; detail: string }[]> = {
+  idea: [{ project: 'Speech Recognition for Endangered Languages', detail: 'Scoping study' }],
+  'concept-note': [{ project: 'Multimodal Sign Language Processing', detail: 'Preliminary review' }],
+  proposal: [],
+  funding: [{ project: 'Cross-Lingual Evaluation Benchmark', detail: 'Extension proposal under review' }],
+  project: [
+    { project: 'Multilingual Parsing Framework', detail: 'Training runs' },
+    { project: 'Low-Resource Language Toolkit', detail: 'Tooling release' },
+  ],
+  dataset: [],
+  analysis: [{ project: 'Low-Resource Language Toolkit', detail: 'Evaluation suite' }],
+  manuscript: [],
+  submission: [{ project: 'EMNLP 2026 Submission', detail: 'In preparation' }],
+  'peer-review': [],
+  publication: [{ project: 'Speech Processing Roadmap', detail: 'Preprint published' }],
+  conference: [],
+  citation: [],
+  impact: [],
+  'knowledge-transfer': [],
+};
+
+export const RESEARCH_PIPELINE: PipelineStage[] = ResearchLifecycleEngine.getAllStages().map(
+  (stage) => ({
+    id: stage.id,
+    name: stage.name,
+    description: stage.description,
+    icon: stage.icon,
+    items: (PIPELINE_ITEMS[stage.id] ?? []).map((item) => ({ ...item, stageId: stage.id })),
+  })
+);
 
 export const FUNDING_STATUS: FundingStatusEntry[] = [
   {

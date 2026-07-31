@@ -1,4 +1,5 @@
-import { ResearchProject, ResearchStatistics, ResearchLifecycleStage } from '@/types/research';
+import { ResearchProject, ResearchStatistics } from '@/types/research';
+import { ResearchLifecycleEngine } from '@/lib/lifecycle';
 
 export const calculateResearchStatistics = (projects: ResearchProject[]): ResearchStatistics => {
   const totalProjects = projects.length;
@@ -27,48 +28,7 @@ export const calculateResearchStatistics = (projects: ResearchProject[]): Resear
   };
 };
 
-export const getResearchLifecycleStages = (): ResearchLifecycleStage[] => [
-  {
-    id: 'ideation',
-    name: 'Ideation',
-    description: 'Initial concept development and hypothesis formation',
-    order: 1,
-    color: 'bg-blue-500',
-    icon: '💡'
-  },
-  {
-    id: 'funding',
-    name: 'Funding',
-    description: 'Securing financial support and resources',
-    order: 2,
-    color: 'bg-green-500',
-    icon: '💰'
-  },
-  {
-    id: 'execution',
-    name: 'Execution',
-    description: 'Active research implementation and data collection',
-    order: 3,
-    color: 'bg-yellow-500',
-    icon: '⚙️'
-  },
-  {
-    id: 'analysis',
-    name: 'Analysis',
-    description: 'Data processing, interpretation, and validation',
-    order: 4,
-    color: 'bg-purple-500',
-    icon: '🔬'
-  },
-  {
-    id: 'dissemination',
-    name: 'Dissemination',
-    description: 'Publication, presentation, and knowledge sharing',
-    order: 5,
-    color: 'bg-red-500',
-    icon: '📢'
-  }
-];
+export const getResearchLifecycleStages = () => ResearchLifecycleEngine.getAllStages();
 
 export const filterProjectsByStatus = (projects: ResearchProject[], status: ResearchProject['status']): ResearchProject[] => {
   return projects.filter(project => project.status === status);
