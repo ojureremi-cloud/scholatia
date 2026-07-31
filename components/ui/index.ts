@@ -31,5 +31,6 @@ export { default as VerificationBadge } from './VerificationBadge';
 export { default as TrustBadge } from './TrustBadge';
 export { default as RoleBadge } from './RoleBadge';
 export { default as InstitutionBadge } from './InstitutionBadge';
+export { default as SectionCard } from './SectionCard';
 export { ProjectStatusBadge } from './ProjectStatusBadge';
 export { ProjectCategoryTag } from './ProjectCategoryTag';

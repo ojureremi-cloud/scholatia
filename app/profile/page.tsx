@@ -1,12 +1,26 @@
 import { PageLayout } from '@/components/layout';
 import Container from '@/components/ui/Container';
-import { ProfileHeader, IdentityCard, BiographyCard, ResearchInterestTags, SkillsCard, SocialLinksCard, AcademicLinksCard, EducationTimeline, EmploymentTimeline, ProfileStatistics, QrCodeCard, TrustBadge } from '@/components/identity';
+import {
+  ProfileHeader,
+  IdentityCard,
+  BiographyCard,
+  ResearchInterestTags,
+  SkillsCard,
+  SocialLinksCard,
+  AcademicLinksCard,
+  EducationTimeline,
+  EmploymentTimeline,
+  ProfileStatistics,
+  PublicationSummary,
+  QrCodeCard,
+  TrustBadge,
+} from '@/components/identity';
 import { VerificationLevel } from '@/types/identity';
 import type { SAIDProfile } from '@/types/identity';
 
 const placeholderProfile: SAIDProfile = {
   said: 'SAID-0000-0000-0000',
-  displayName: 'Dr. Jane scholar',
+  displayName: 'Dr. Jane Scholar',
   accountCategory: 'Individual',
   accountType: 'Researcher',
   roles: ['Researcher', 'Reviewer'],
@@ -18,7 +32,7 @@ const placeholderProfile: SAIDProfile = {
   disciplines: ['Computer Science', 'Linguistics'],
   fieldsOfStudy: ['Computational Linguistics', 'Artificial Intelligence'],
   education: [
-    { institution: 'University of Cambridge', degree: 'PhD in Computational Linguistics', field: 'Computational Linguistics', startDate: '2010' },
+    { institution: 'University of Cambridge', degree: 'PhD in Computational Linguistics', field: 'Computational Linguistics', startDate: '2010', endDate: '2013' },
     { institution: 'University of Oxford', degree: 'MSc in Linguistics', field: 'Linguistics', startDate: '2008', endDate: '2009' },
   ],
   employmentHistory: [
@@ -92,6 +106,7 @@ export default function ProfilePage() {
           <div className="space-y-8">
             <IdentityCard profile={placeholderProfile} />
             <ProfileStatistics profile={placeholderProfile} />
+            <PublicationSummary summary={placeholderProfile.publicationSummary} />
             <ResearchInterestTags interests={placeholderProfile.researchInterests} />
             <SkillsCard skills={placeholderProfile.skills} />
             <SocialLinksCard links={placeholderProfile.socialLinks} />
