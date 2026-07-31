@@ -1,7 +1,7 @@
 import React from 'react';
 
 type ProjectStatusBadgeProps = {
-  status: 'active' | 'completed' | 'planned' | 'on-hold';
+  status: 'active' | 'completed' | 'planned' | 'on-hold' | 'draft';
 };
 
 export const ProjectStatusBadge = ({ status }: ProjectStatusBadgeProps) => {
@@ -10,6 +10,7 @@ export const ProjectStatusBadge = ({ status }: ProjectStatusBadgeProps) => {
     completed: { label: 'Completed', color: 'bg-blue-100 text-blue-800' },
     planned: { label: 'Planned', color: 'bg-yellow-100 text-yellow-800' },
     'on-hold': { label: 'On Hold', color: 'bg-gray-100 text-gray-800' },
+    draft: { label: 'Draft', color: 'bg-purple-100 text-purple-800' },
   };
 
   const config = statusConfig[status] || statusConfig['active'];

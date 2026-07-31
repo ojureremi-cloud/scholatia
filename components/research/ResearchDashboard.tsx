@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo, useState } from 'react';
 import type { ResearchProject } from '@/types/research';
 import { ResearchProjectCard } from './ResearchProjectCard';
