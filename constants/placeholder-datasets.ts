@@ -1,0 +1,1700 @@
+import type { ResearchLifecycleStage } from '@/types/research';
+import {
+  DATASET_LIFECYCLE_STAGE_ID,
+  type Dataset,
+  type DatasetAnalytics,
+  type DatasetCollection,
+  type DatasetDownloadTrendPoint,
+  type DatasetTimelineEntry,
+} from '@/types/dataset';
+import { ResearchLifecycleEngine } from '@/lib/lifecycle';
+
+/**
+ * Canonical lifecycle stage definition for Datasets, sourced from the
+ * ResearchLifecycleEngine so this module never hardcodes lifecycle logic.
+ */
+export const DATASET_LIFECYCLE_STAGE: ResearchLifecycleStage = ResearchLifecycleEngine.getStage(
+  DATASET_LIFECYCLE_STAGE_ID
+)!;
+
+export const GB = 1024 ** 3;
+export const MB = 1024 ** 2;
+
+type DatasetInput = Omit<Dataset, 'stageId'> & { stageId?: Dataset['stageId'] };
+
+function createDataset(data: DatasetInput): Dataset {
+  return { stageId: DATASET_LIFECYCLE_STAGE_ID, ...data };
+}
+
+export const DATASETS: Dataset[] = [
+  createDataset({
+    id: 'mpf-multilingual-treebanks',
+    title: 'Multilingual Parsing Framework — UD Treebanks',
+    description:
+      'Universal Dependencies treebanks covering 50+ languages, curated and re-annotated to support cross-lingual dependency parsing and transfer learning experiments.',
+    status: 'published',
+    access: 'open',
+    verification: 'verified',
+    doi: '10.1000/placeholder.dataset.0001',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2026-01-15',
+    updatedAt: '2026-06-20',
+    verifiedAt: '2026-02-01',
+    latestVersion: 'v3.1',
+    versions: [
+      {
+        id: 'mpf-v1',
+        version: 'v1.0',
+        publishedAt: '2024-03-10',
+        doi: '10.1000/placeholder.dataset.0001.v1',
+        sizeBytes: 14 * GB,
+        fileCount: 1860,
+        format: 'CoNLL-U',
+        status: 'published',
+        changes: 'Initial release covering 36 languages.',
+      },
+      {
+        id: 'mpf-v2',
+        version: 'v2.0',
+        publishedAt: '2025-06-01',
+        doi: '10.1000/placeholder.dataset.0001.v2',
+        sizeBytes: 16 * GB,
+        fileCount: 2210,
+        format: 'CoNLL-U',
+        status: 'published',
+        changes: 'Added 10 languages and corrected morphological features.',
+      },
+      {
+        id: 'mpf-v3',
+        version: 'v3.1',
+        publishedAt: '2026-01-15',
+        doi: '10.1000/placeholder.dataset.0001.v3',
+        sizeBytes: 18 * GB,
+        fileCount: 2480,
+        format: 'CoNLL-U / TSV',
+        status: 'published',
+        changes: '50th language supported; refreshed train-dev-test splits.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'mpf-ccby',
+        name: 'Creative Commons Attribution 4.0 International',
+        abbreviation: 'CC-BY-4.0',
+        url: 'https://creativecommons.org/licenses/by/4.0/',
+        type: 'open',
+        allowsCommercialUse: true,
+        allowsDerivatives: true,
+        attributionRequired: true,
+        description: 'Reuse and remix with attribution to the dataset authors.',
+      },
+    ],
+    citations: [
+      {
+        id: 'mpf-cit-1',
+        title: 'Low-Resource Language Parsing with Cross-Lingual Transfer',
+        authors: ['J. Scholar', 'C. Researcher'],
+        venue: 'Computational Linguistics Journal',
+        year: '2022',
+        doi: '10.1000/placeholder.2022.0120',
+        type: 'Journal Article',
+        count: 120,
+      },
+      {
+        id: 'mpf-cit-2',
+        title: 'A Typology-Driven Approach to Low-Resource Dependency Parsing',
+        authors: ['J. Scholar', 'C. Researcher'],
+        venue: 'LREC 2024 Proceedings',
+        year: '2024',
+        doi: '10.1000/placeholder.2024.0018',
+        type: 'Conference Paper',
+        count: 18,
+      },
+      {
+        id: 'mpf-cit-3',
+        title: 'Benchmarking Transfer Learning across 40 Languages',
+        authors: ['J. Scholar', 'C. Researcher', 'S. Okafor'],
+        venue: 'EMNLP 2025 Proceedings',
+        year: '2025',
+        doi: '10.1000/placeholder.2025.0012',
+        type: 'Conference Paper',
+        count: 12,
+      },
+    ],
+    contributors: [
+      {
+        id: 'mpf-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'mpf-con-2',
+        name: 'Dr. Chen Researcher',
+        said: 'SAID-0000-0000-0003',
+        role: 'researcher',
+        institution: 'Tech University',
+      },
+      {
+        id: 'mpf-con-3',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'data-curator',
+        institution: 'University of Oxford',
+      },
+      {
+        id: 'mpf-con-4',
+        name: 'Dr. Farid Developer',
+        said: 'SAID-0000-0000-0005',
+        role: 'software-engineer',
+        institution: 'Institute for Computational Linguistics',
+      },
+    ],
+    metadata: {
+      summary:
+        'Curated Universal Dependencies treebanks with harmonised annotation across 50+ languages, designed for cross-lingual parsing and transfer learning.',
+      methodology:
+        'Treebanks were harvested from Universal Dependencies releases, harmonised to a shared annotation profile, and validated with inter-annotator agreement checks.',
+      collectionPeriod: '2022 - 2025',
+      temporalCoverage: 'Classical to modern texts (mixed periods)',
+      geographicCoverage: 'Global',
+      language: '50+ languages',
+      subjects: ['dependency parsing', 'treebanks', 'multilingual NLP', 'morphology'],
+      fileFormats: ['CoNLL-U', 'TSV', 'JSON'],
+      sizeBytes: 18 * GB,
+      fileCount: 2480,
+      sampleSize: 50,
+    },
+    relationships: {
+      project: {
+        id: 'multilingual-parsing-framework',
+        title: 'Multilingual Parsing Framework',
+        detail: 'Active',
+      },
+      grants: [
+        {
+          id: 'grant-nrc-2022-113',
+          title: 'National Research Council — Grant 2022/113',
+          detail: '£450,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2022-0120',
+          title: 'Low-Resource Language Parsing with Cross-Lingual Transfer',
+          detail: 'Computational Linguistics Journal · 2022 · 10.1000/placeholder.2022.0120',
+        },
+        {
+          id: 'pub-2024-0018',
+          title: 'A Typology-Driven Approach to Low-Resource Dependency Parsing',
+          detail: 'LREC 2024 Proceedings · 2024 · 10.1000/placeholder.2024.0018',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'University of Cambridge'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0003'],
+    },
+    statistics: {
+      downloads: 12840,
+      views: 48200,
+      citations: 34,
+      versionCount: 3,
+      fileCount: 2480,
+      sizeBytes: 18 * GB,
+      storageUsedGb: 18,
+    },
+    tags: ['dependency parsing', 'multilingual', 'treebanks', 'UD', 'low-resource'],
+    collections: ['Corpora', 'NLP Resources'],
+  }),
+
+  createDataset({
+    id: 'lrlt-annotated-corpus-v2',
+    title: 'Low-Resource Language Toolkit — Annotated Corpus v2',
+    description:
+      'Open-source annotated corpora for under-represented languages, powering the Low-Resource Language Toolkit and community NLP research.',
+    status: 'published',
+    access: 'open',
+    verification: 'peer-reviewed',
+    doi: '10.1000/placeholder.dataset.0002',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2026-03-01',
+    updatedAt: '2026-05-12',
+    verifiedAt: '2026-03-25',
+    latestVersion: 'v2.0',
+    versions: [
+      {
+        id: 'lrlt-v1',
+        version: 'v1.0',
+        publishedAt: '2021-09-01',
+        doi: '10.1000/placeholder.dataset.0002.v1',
+        sizeBytes: 4 * GB,
+        fileCount: 860,
+        format: 'CoNLL-U / XML',
+        status: 'published',
+        changes: 'Initial corpus release for 12 languages.',
+      },
+      {
+        id: 'lrlt-v2',
+        version: 'v2.0',
+        publishedAt: '2026-03-01',
+        doi: '10.1000/placeholder.dataset.0002.v2',
+        sizeBytes: 6.4 * GB,
+        fileCount: 1540,
+        format: 'CoNLL-U / XML',
+        status: 'published',
+        changes: 'Extended to 24 languages with aligned documentation.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'lrlt-ccbync',
+        name: 'Creative Commons Attribution-NonCommercial 4.0 International',
+        abbreviation: 'CC-BY-NC-4.0',
+        url: 'https://creativecommons.org/licenses/by-nc/4.0/',
+        type: 'open',
+        allowsCommercialUse: false,
+        allowsDerivatives: true,
+        attributionRequired: true,
+        description: 'Non-commercial reuse with attribution.',
+      },
+    ],
+    citations: [
+      {
+        id: 'lrlt-cit-1',
+        title: 'Evaluating Annotation Consistency in Multilingual Corpora',
+        authors: ['J. Scholar', 'D. Linguist', 'F. Developer'],
+        venue: 'Journal of Language Documentation',
+        year: '2024',
+        doi: '10.1000/placeholder.2024.0032',
+        type: 'Journal Article',
+        count: 32,
+      },
+      {
+        id: 'lrlt-cit-2',
+        title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+        authors: ['J. Scholar', 'D. Linguist'],
+        venue: 'Language Resources and Evaluation',
+        year: '2021',
+        doi: '10.1000/placeholder.2021.0089',
+        type: 'Journal Article',
+        count: 89,
+      },
+      {
+        id: 'lrlt-cit-3',
+        title: 'Annotation Practices for Typologically Diverse Corpora',
+        authors: ['J. Scholar'],
+        venue: 'The Handbook of Language Resources',
+        year: '2022',
+        doi: '10.1000/placeholder.2022.0024',
+        type: 'Book Chapter',
+        count: 24,
+      },
+    ],
+    contributors: [
+      {
+        id: 'lrlt-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'lrlt-con-2',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'data-collector',
+        institution: 'University of Oxford',
+      },
+      {
+        id: 'lrlt-con-3',
+        name: 'Dr. Farid Developer',
+        said: 'SAID-0000-0000-0005',
+        role: 'software-engineer',
+        institution: 'Institute for Computational Linguistics',
+      },
+      {
+        id: 'lrlt-con-4',
+        name: 'Priya Patel',
+        said: 'SAID-0000-0000-0006',
+        role: 'data-curator',
+        institution: 'Institute for Computational Linguistics',
+      },
+    ],
+    metadata: {
+      summary:
+        'Annotated corpora for 24 under-represented languages, accompanied by tooling documentation and annotation guidelines.',
+      methodology:
+        'Community-led data collection with native-speaker annotation, validated through inter-annotator agreement and adjudication rounds.',
+      collectionPeriod: '2019 - 2026',
+      temporalCoverage: 'Contemporary texts (2000 - present)',
+      geographicCoverage: 'Global focus on under-represented regions',
+      language: '24 under-represented languages',
+      subjects: ['corpus linguistics', 'annotation', 'language documentation', 'low-resource NLP'],
+      fileFormats: ['CoNLL-U', 'XML', 'TSV'],
+      sizeBytes: 6.4 * GB,
+      fileCount: 1540,
+      sampleSize: 240000,
+    },
+    relationships: {
+      project: {
+        id: 'low-resource-language-toolkit',
+        title: 'Low-Resource Language Toolkit',
+        detail: 'Active',
+      },
+      grants: [
+        {
+          id: 'grant-dff-2021-087',
+          title: 'Digital Futures Fund — Grant 2021/087',
+          detail: '£180,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2024-0032',
+          title: 'Evaluating Annotation Consistency in Multilingual Corpora',
+          detail: 'Journal of Language Documentation · 2024 · 10.1000/placeholder.2024.0032',
+        },
+        {
+          id: 'pub-2021-0089',
+          title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+          detail: 'Language Resources and Evaluation · 2021 · 10.1000/placeholder.2021.0089',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'University of Oxford'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0006'],
+    },
+    statistics: {
+      downloads: 9630,
+      views: 31000,
+      citations: 27,
+      versionCount: 2,
+      fileCount: 1540,
+      sizeBytes: 6.4 * GB,
+      storageUsedGb: 10.4,
+    },
+    tags: ['corpus', 'annotation', 'low-resource', 'language documentation', 'toolkit'],
+    collections: ['Corpora', 'Toolkits'],
+  }),
+
+  createDataset({
+    id: 'xbench-multilingual-evaluation',
+    title: 'Cross-Lingual Evaluation Benchmark (XBench)',
+    description:
+      'A standardised evaluation suite for cross-lingual natural language understanding covering 40 languages, with harmonised test sets and scoring harnesses.',
+    status: 'published',
+    access: 'open',
+    verification: 'verified',
+    doi: '10.1000/placeholder.dataset.0003',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2026-06-01',
+    updatedAt: '2026-06-20',
+    verifiedAt: '2026-06-10',
+    latestVersion: 'v1.2',
+    versions: [
+      {
+        id: 'xbench-v1',
+        version: 'v1.0',
+        publishedAt: '2026-01-10',
+        doi: '10.1000/placeholder.dataset.0003.v1',
+        sizeBytes: 20 * GB,
+        fileCount: 640,
+        format: 'JSON',
+        status: 'published',
+        changes: 'Initial benchmark covering 40 languages across 9 tasks.',
+      },
+      {
+        id: 'xbench-v12',
+        version: 'v1.2',
+        publishedAt: '2026-06-01',
+        doi: '10.1000/placeholder.dataset.0003.v1.2',
+        sizeBytes: 22 * GB,
+        fileCount: 860,
+        format: 'JSON / H5',
+        status: 'published',
+        changes: 'Added 8 low-resource languages and corrected scoring gaps.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'xbench-ccby',
+        name: 'Creative Commons Attribution 4.0 International',
+        abbreviation: 'CC-BY-4.0',
+        url: 'https://creativecommons.org/licenses/by/4.0/',
+        type: 'open',
+        allowsCommercialUse: true,
+        allowsDerivatives: true,
+        attributionRequired: true,
+        description: 'Reuse with attribution; benchmark results must cite the suite.',
+      },
+    ],
+    citations: [
+      {
+        id: 'xbench-cit-1',
+        title: 'Benchmarking Transfer Learning across 40 Languages',
+        authors: ['J. Scholar', 'C. Researcher', 'S. Okafor'],
+        venue: 'EMNLP 2025 Proceedings',
+        year: '2025',
+        doi: '10.1000/placeholder.2025.0012',
+        type: 'Conference Paper',
+        count: 12,
+      },
+      {
+        id: 'xbench-cit-2',
+        title: 'Multilingual Representations for Cross-Lingual Transfer Learning',
+        authors: ['J. Scholar', 'A. Mentor', 'E. Collaborator'],
+        venue: 'ACL Conference on Empirical Methods',
+        year: '2020',
+        doi: '10.1000/placeholder.2020.0210',
+        type: 'Conference Paper',
+        count: 210,
+      },
+    ],
+    contributors: [
+      {
+        id: 'xbench-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'xbench-con-2',
+        name: 'Dr. Chen Researcher',
+        said: 'SAID-0000-0000-0003',
+        role: 'analyst',
+        institution: 'Tech University',
+      },
+      {
+        id: 'xbench-con-3',
+        name: 'Sam Okafor',
+        said: 'SAID-0000-0000-0007',
+        role: 'data-curator',
+        institution: 'Institute for Computational Linguistics',
+      },
+    ],
+    metadata: {
+      summary:
+        'Harmonised multilingual test sets and scoring harnesses for evaluating cross-lingual natural language understanding.',
+      methodology:
+        'Tasks are sourced from existing benchmarks, re-annotated where needed, and translated consistently across all 40 languages with quality control.',
+      collectionPeriod: '2025 - 2026',
+      temporalCoverage: 'Contemporary (2020 - present)',
+      geographicCoverage: 'Global',
+      language: '40 languages',
+      subjects: ['evaluation', 'benchmarking', 'cross-lingual NLU', 'transfer learning'],
+      fileFormats: ['JSON', 'H5', 'TSV'],
+      sizeBytes: 22 * GB,
+      fileCount: 860,
+      sampleSize: 9,
+    },
+    relationships: {
+      project: {
+        id: 'cross-lingual-evaluation-benchmark',
+        title: 'Cross-Lingual Evaluation Benchmark',
+        detail: 'Active',
+      },
+      grants: [
+        {
+          id: 'grant-uif',
+          title: 'University Innovation Fund',
+          detail: '£36,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2025-0012',
+          title: 'Benchmarking Transfer Learning across 40 Languages',
+          detail: 'EMNLP 2025 Proceedings · 2025 · 10.1000/placeholder.2025.0012',
+        },
+        {
+          id: 'pub-2020-0210',
+          title: 'Multilingual Representations for Cross-Lingual Transfer Learning',
+          detail: 'ACL Conference on Empirical Methods · 2020 · 10.1000/placeholder.2020.0210',
+        },
+      ],
+      institutions: ['Tech University', 'National Autonomous University of Mexico'],
+      researchers: ['SAID-0000-0000-0003', 'SAID-0000-0000-0007'],
+    },
+    statistics: {
+      downloads: 7120,
+      views: 24100,
+      citations: 19,
+      versionCount: 2,
+      fileCount: 860,
+      sizeBytes: 22 * GB,
+      storageUsedGb: 42,
+    },
+    tags: ['benchmark', 'evaluation', 'multilingual', 'NLU', '40 languages'],
+    collections: ['Benchmarks', 'NLP Resources'],
+  }),
+
+  createDataset({
+    id: 'clca-annotation-guidelines',
+    title: 'Cross-Lingual Corpus Annotation Guidelines',
+    description:
+      'Annotation guidelines and gold-standard judgements for cross-lingual corpus annotation, shared openly to standardise community annotation practice.',
+    status: 'published',
+    access: 'open',
+    verification: 'peer-reviewed',
+    doi: '10.1000/placeholder.dataset.0004',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2021-08-01',
+    updatedAt: '2024-10-15',
+    verifiedAt: '2021-09-01',
+    latestVersion: 'v2.0',
+    versions: [
+      {
+        id: 'clca-v1',
+        version: 'v1.0',
+        publishedAt: '2020-09-01',
+        doi: '10.1000/placeholder.dataset.0004.v1',
+        sizeBytes: 240 * MB,
+        fileCount: 68,
+        format: 'PDF / Markdown',
+        status: 'published',
+        changes: 'Initial guideline set for morphosyntactic annotation.',
+      },
+      {
+        id: 'clca-v2',
+        version: 'v2.0',
+        publishedAt: '2021-08-01',
+        doi: '10.1000/placeholder.dataset.0004.v2',
+        sizeBytes: 420 * MB,
+        fileCount: 120,
+        format: 'PDF / Markdown',
+        status: 'published',
+        changes: 'Expanded with adjudication procedures and quality metrics.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'clca-cc0',
+        name: 'Creative Commons Zero 1.0 Universal',
+        abbreviation: 'CC0-1.0',
+        url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        type: 'open',
+        allowsCommercialUse: true,
+        allowsDerivatives: true,
+        attributionRequired: false,
+        description: 'Dedicated to the public domain with no restrictions.',
+      },
+    ],
+    citations: [
+      {
+        id: 'clca-cit-1',
+        title: 'Annotation Practices for Typologically Diverse Corpora',
+        authors: ['J. Scholar'],
+        venue: 'The Handbook of Language Resources',
+        year: '2022',
+        doi: '10.1000/placeholder.2022.0024',
+        type: 'Book Chapter',
+        count: 24,
+      },
+      {
+        id: 'clca-cit-2',
+        title: 'Annotation Guidelines for Typologically Diverse Corpora',
+        authors: ['J. Scholar'],
+        venue: 'arXiv preprint',
+        year: '2019',
+        doi: '10.1000/placeholder.2019.0034',
+        type: 'Preprint',
+        count: 34,
+      },
+    ],
+    contributors: [
+      {
+        id: 'clca-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'clca-con-2',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'verifier',
+        institution: 'University of Oxford',
+      },
+    ],
+    metadata: {
+      summary:
+        'Community-facing annotation guidelines covering tokenisation, morphosyntax, and adjudication for typologically diverse corpora.',
+      methodology:
+        'Guidelines were iterated through multi-site annotation pilots and revised against inter-annotator agreement results.',
+      collectionPeriod: '2019 - 2021',
+      temporalCoverage: 'Not applicable',
+      geographicCoverage: 'Global',
+      language: 'English (guidelines)',
+      subjects: ['annotation', 'guidelines', 'typology', 'corpus linguistics'],
+      fileFormats: ['PDF', 'Markdown'],
+      sizeBytes: 420 * MB,
+      fileCount: 120,
+    },
+    relationships: {
+      project: {
+        id: 'cross-lingual-corpus-annotation',
+        title: 'Cross-Lingual Corpus Annotation',
+        detail: 'Completed',
+      },
+      grants: [
+        {
+          id: 'grant-lpf',
+          title: 'Language Preservation Foundation',
+          detail: '£95,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2022-0024',
+          title: 'Annotation Practices for Typologically Diverse Corpora',
+          detail: 'The Handbook of Language Resources · 2022 · 10.1000/placeholder.2022.0024',
+        },
+        {
+          id: 'pub-2019-0034',
+          title: 'Annotation Guidelines for Typologically Diverse Corpora',
+          detail: 'arXiv preprint · 2019 · 10.1000/placeholder.2019.0034',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'Language Preservation Foundation'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0004'],
+    },
+    statistics: {
+      downloads: 14820,
+      views: 39700,
+      citations: 41,
+      versionCount: 2,
+      fileCount: 120,
+      sizeBytes: 420 * MB,
+      storageUsedGb: 0.8,
+    },
+    tags: ['annotation', 'guidelines', 'typology', 'corpus linguistics', 'gold standard'],
+    collections: ['Guidelines', 'Corpora'],
+  }),
+
+  createDataset({
+    id: 'ssit-typology-corpus',
+    title: 'Syntax-Semantics Interface Typology Corpus',
+    description:
+      'A controlled-access corpus of typologically diverse texts annotated for the mapping between syntactic structures and semantic interpretations.',
+    status: 'archived',
+    access: 'controlled',
+    verification: 'peer-reviewed',
+    doi: '10.1000/placeholder.dataset.0005',
+    creator: 'Dr. Jane Scholar',
+    institution: 'University of Cambridge',
+    publishedAt: '2021-09-01',
+    updatedAt: '2022-01-15',
+    verifiedAt: '2021-10-05',
+    latestVersion: 'v1.0',
+    accessNote: 'Access governed by the Syntax-Semantics Interface consortium agreement.',
+    versions: [
+      {
+        id: 'ssit-v1',
+        version: 'v1.0',
+        publishedAt: '2021-09-01',
+        doi: '10.1000/placeholder.dataset.0005.v1',
+        sizeBytes: 3.1 * GB,
+        fileCount: 640,
+        format: 'XML / JSON',
+        status: 'deprecated',
+        changes: 'Final corpus release; superseded by the archived record.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'ssit-eua',
+        name: 'End User Agreement (Consortium)',
+        abbreviation: 'EUA',
+        url: 'https://scholatia.org/licenses/consortium-eua',
+        type: 'restricted',
+        allowsCommercialUse: false,
+        allowsDerivatives: false,
+        attributionRequired: true,
+        description: 'Access limited to consortium members under the signed agreement.',
+      },
+    ],
+    citations: [
+      {
+        id: 'ssit-cit-1',
+        title: 'Neural Approaches to Syntax in Multilingual Contexts',
+        authors: ['J. Scholar', 'A. Mentor', 'B. Collaborator'],
+        venue: 'Journal of Natural Language Processing',
+        year: '2023',
+        doi: '10.1000/placeholder.2023.0045',
+        type: 'Journal Article',
+        count: 45,
+      },
+      {
+        id: 'ssit-cit-2',
+        title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+        authors: ['J. Scholar', 'D. Linguist'],
+        venue: 'Language Resources and Evaluation',
+        year: '2021',
+        doi: '10.1000/placeholder.2021.0089',
+        type: 'Journal Article',
+        count: 89,
+      },
+    ],
+    contributors: [
+      {
+        id: 'ssit-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'University of Cambridge',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'ssit-con-2',
+        name: 'Prof. Aisha Mentor',
+        said: 'SAID-0000-0000-0002',
+        role: 'researcher',
+        institution: 'University of Cambridge',
+      },
+      {
+        id: 'ssit-con-3',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'data-curator',
+        institution: 'University of Oxford',
+      },
+    ],
+    metadata: {
+      summary:
+        'Typologically diverse texts annotated for syntax-semantics correspondences, maintained under a consortium access agreement.',
+      methodology:
+        'Cross-linguistic elicitation and corpus sampling with bilingual annotators and expert adjudication.',
+      collectionPeriod: '2018 - 2021',
+      temporalCoverage: 'Mixed historical and contemporary texts',
+      geographicCoverage: 'Global',
+      language: '22 languages',
+      subjects: ['syntax', 'semantics', 'typology', 'theoretical linguistics'],
+      fileFormats: ['XML', 'JSON'],
+      sizeBytes: 3.1 * GB,
+      fileCount: 640,
+      sampleSize: 45000,
+    },
+    relationships: {
+      project: {
+        id: 'syntax-semantics-interface',
+        title: 'Syntax-Semantics Interface in Typologically Diverse Languages',
+        detail: 'Completed',
+      },
+      grants: [
+        {
+          id: 'grant-uf-2018-014',
+          title: 'University Fellowship — 2018/014',
+          detail: '£75,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2023-0045',
+          title: 'Neural Approaches to Syntax in Multilingual Contexts',
+          detail: 'Journal of Natural Language Processing · 2023 · 10.1000/placeholder.2023.0045',
+        },
+        {
+          id: 'pub-2021-0089',
+          title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+          detail: 'Language Resources and Evaluation · 2021 · 10.1000/placeholder.2021.0089',
+        },
+      ],
+      institutions: ['University of Cambridge', 'University of Oxford'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0002'],
+    },
+    statistics: {
+      downloads: 1840,
+      views: 6200,
+      citations: 12,
+      versionCount: 1,
+      fileCount: 640,
+      sizeBytes: 3.1 * GB,
+      storageUsedGb: 3.1,
+    },
+    tags: ['syntax', 'semantics', 'typology', 'theoretical linguistics'],
+    collections: ['Special Collections'],
+  }),
+
+  createDataset({
+    id: 'els-speech-recordings',
+    title: 'Endangered Language Speech Recordings',
+    description:
+      'Field recordings and forced-alignment outputs documenting endangered languages, collected in partnership with speaker communities and pending public release.',
+    status: 'in-review',
+    access: 'embargoed',
+    verification: 'in-review',
+    doi: '10.1000/placeholder.dataset.0006',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2026-07-28',
+    updatedAt: '2026-07-30',
+    latestVersion: 'v1.0-rc1',
+    accessNote: 'Files are withheld until the embargo ends; metadata is public.',
+    embargoEndsAt: '2027-02-01',
+    versions: [
+      {
+        id: 'els-rc1',
+        version: 'v1.0-rc1',
+        publishedAt: '2026-07-28',
+        doi: '10.1000/placeholder.dataset.0006.rc1',
+        sizeBytes: 48 * GB,
+        fileCount: 3200,
+        format: 'WAV / TextGrid',
+        status: 'published',
+        changes: 'Release candidate pending community review before publication.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'els-community',
+        name: 'Community Data Agreement',
+        abbreviation: 'CDA',
+        url: 'https://scholatia.org/licenses/community-data-agreement',
+        type: 'restricted',
+        allowsCommercialUse: false,
+        allowsDerivatives: false,
+        attributionRequired: true,
+        description: 'Data governed by agreements with speaker communities.',
+      },
+    ],
+    citations: [
+      {
+        id: 'els-cit-1',
+        title: 'Speech Processing for Endangered Languages: A Roadmap',
+        authors: ['J. Scholar', 'D. Linguist'],
+        venue: 'arXiv preprint',
+        year: '2025',
+        doi: '10.1000/placeholder.2025.0005',
+        type: 'Preprint',
+        count: 5,
+      },
+    ],
+    contributors: [
+      {
+        id: 'els-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'els-con-2',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'data-collector',
+        institution: 'University of Oxford',
+      },
+      {
+        id: 'els-con-3',
+        name: 'Sam Okafor',
+        said: 'SAID-0000-0000-0007',
+        role: 'analyst',
+        institution: 'Institute for Computational Linguistics',
+      },
+    ],
+    metadata: {
+      summary:
+        'Digitised field recordings with transcripts and forced-alignment outputs for endangered languages, collected under community agreements.',
+      methodology:
+        'Community-partnered fieldwork using portable recorders, followed by forced alignment and orthography standardisation.',
+      collectionPeriod: '2025 - 2026',
+      temporalCoverage: 'Contemporary speech',
+      geographicCoverage: 'Field sites in West Africa and Mesoamerica',
+      language: '6 endangered languages',
+      subjects: ['speech processing', 'endangered languages', 'forced alignment', 'documentation'],
+      fileFormats: ['WAV', 'TextGrid', 'JSON'],
+      sizeBytes: 48 * GB,
+      fileCount: 3200,
+      sampleSize: 8,
+    },
+    relationships: {
+      project: {
+        id: 'endangered-language-speech',
+        title: 'Speech Recognition for Endangered Languages',
+        detail: 'In preparation',
+      },
+      grants: [
+        {
+          id: 'grant-hrf',
+          title: 'Horizon Research Fund',
+          detail: 'Proposal under review',
+        },
+        {
+          id: 'grant-lpf-fieldwork',
+          title: 'Language Preservation Foundation — Fieldwork round',
+          detail: 'Funding secured',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2025-0005',
+          title: 'Speech Processing for Endangered Languages: A Roadmap',
+          detail: 'arXiv preprint · 2025 · 10.1000/placeholder.2025.0005',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'University of Oxford'],
+      researchers: ['SAID-0000-0000-0004', 'SAID-0000-0000-0007'],
+    },
+    statistics: {
+      downloads: 0,
+      views: 1540,
+      citations: 3,
+      versionCount: 1,
+      fileCount: 3200,
+      sizeBytes: 48 * GB,
+      storageUsedGb: 48,
+    },
+    tags: ['speech', 'endangered languages', 'forced alignment', 'documentation'],
+    collections: ['Audio Archive'],
+  }),
+
+  createDataset({
+    id: 'msl-multimodal-data',
+    title: 'Multimodal Sign Language Data',
+    description:
+      'Preliminary multimodal sign language data collected with community-created content for recognition and translation research. Not yet published.',
+    status: 'draft',
+    access: 'private',
+    verification: 'unverified',
+    doi: '10.1000/placeholder.dataset.0007',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    updatedAt: '2026-06-10',
+    latestVersion: 'v0.1-alpha',
+    versions: [
+      {
+        id: 'msl-alpha',
+        version: 'v0.1-alpha',
+        publishedAt: '2026-06-10',
+        doi: '10.1000/placeholder.dataset.0007.alpha',
+        sizeBytes: 850 * MB,
+        fileCount: 45,
+        format: 'MP4 / JSON',
+        status: 'published',
+        changes: 'Internal alpha release for feasibility study.',
+      },
+    ],
+    licenses: [],
+    citations: [],
+    contributors: [
+      {
+        id: 'msl-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'msl-con-2',
+        name: 'Dr. Chen Researcher',
+        said: 'SAID-0000-0000-0003',
+        role: 'researcher',
+        institution: 'Tech University',
+      },
+      {
+        id: 'msl-con-3',
+        name: 'Priya Patel',
+        said: 'SAID-0000-0000-0006',
+        role: 'data-collector',
+        institution: 'Institute for Computational Linguistics',
+      },
+    ],
+    metadata: {
+      summary:
+        'Multimodal sign language video and keypoint data for a feasibility study of recognition and translation models.',
+      methodology:
+        'Community-created content curated with consent, annotated with keypoints and glosses on a pilot subset.',
+      collectionPeriod: '2026 - 2027',
+      temporalCoverage: 'Not applicable',
+      geographicCoverage: 'Community partners pending',
+      language: 'Sign language (community-specified)',
+      subjects: ['sign language', 'multimodal', 'translation', 'computer vision'],
+      fileFormats: ['MP4', 'JSON'],
+      sizeBytes: 850 * MB,
+      fileCount: 45,
+      sampleSize: 2,
+    },
+    relationships: {
+      project: {
+        id: 'sign-language-multimodal',
+        title: 'Multimodal Sign Language Processing',
+        detail: 'Draft',
+      },
+      grants: [],
+      publications: [],
+      institutions: ['Institute for Computational Linguistics', 'Tech University'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0006'],
+    },
+    statistics: {
+      downloads: 0,
+      views: 120,
+      citations: 0,
+      versionCount: 1,
+      fileCount: 45,
+      sizeBytes: 850 * MB,
+      storageUsedGb: 0.9,
+    },
+    tags: ['sign language', 'multimodal', 'translation', 'computer vision'],
+    collections: ['In Preparation'],
+  }),
+
+  createDataset({
+    id: 'leac-error-annotated-corpus',
+    title: 'Learner English Error-Annotated Corpus',
+    description:
+      'A restricted-access error-annotated corpus of learner English, used to study transfer effects and second-language acquisition patterns.',
+    status: 'published',
+    access: 'restricted',
+    verification: 'verified',
+    doi: '10.1000/placeholder.dataset.0008',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2025-04-20',
+    updatedAt: '2026-02-10',
+    verifiedAt: '2025-05-15',
+    latestVersion: 'v2.1',
+    accessNote: 'Access granted to researchers on request for non-commercial research use.',
+    versions: [
+      {
+        id: 'leac-v1',
+        version: 'v1.0',
+        publishedAt: '2024-05-01',
+        doi: '10.1000/placeholder.dataset.0008.v1',
+        sizeBytes: 1.4 * GB,
+        fileCount: 240,
+        format: 'XML',
+        status: 'published',
+        changes: 'Initial release with basic error tags.',
+      },
+      {
+        id: 'leac-v21',
+        version: 'v2.1',
+        publishedAt: '2025-04-20',
+        doi: '10.1000/placeholder.dataset.0008.v2.1',
+        sizeBytes: 1.8 * GB,
+        fileCount: 320,
+        format: 'XML / TSV',
+        status: 'published',
+        changes: 'Added L1-specific tags and expanded metadata.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'leac-ccbyncnd',
+        name: 'Creative Commons Attribution-NonCommercial-NoDerivatives 4.0',
+        abbreviation: 'CC-BY-NC-ND-4.0',
+        url: 'https://creativecommons.org/licenses/by-nc-nd/4.0/',
+        type: 'restricted',
+        allowsCommercialUse: false,
+        allowsDerivatives: false,
+        attributionRequired: true,
+        description: 'Non-commercial, non-derivative reuse with attribution.',
+      },
+    ],
+    citations: [
+      {
+        id: 'leac-cit-1',
+        title: 'Evaluating Annotation Consistency in Multilingual Corpora',
+        authors: ['J. Scholar', 'D. Linguist', 'F. Developer'],
+        venue: 'Journal of Language Documentation',
+        year: '2024',
+        doi: '10.1000/placeholder.2024.0032',
+        type: 'Journal Article',
+        count: 32,
+      },
+      {
+        id: 'leac-cit-2',
+        title: 'Transfer Learning for Low-Resource Languages',
+        authors: ['J. Scholar', 'C. Researcher'],
+        venue: 'Advances in Cross-Lingual NLP',
+        year: '2024',
+        doi: '10.1000/placeholder.2024.0015',
+        type: 'Book Chapter',
+        count: 15,
+      },
+    ],
+    contributors: [
+      {
+        id: 'leac-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'leac-con-2',
+        name: 'Priya Patel',
+        said: 'SAID-0000-0000-0006',
+        role: 'data-curator',
+        institution: 'Institute for Computational Linguistics',
+      },
+      {
+        id: 'leac-con-3',
+        name: 'Dr. Lucia Fernández',
+        said: 'SAID-0000-0000-0008',
+        role: 'data-collector',
+        institution: 'National Autonomous University of Mexico',
+      },
+    ],
+    metadata: {
+      summary:
+        'Error-annotated learner English essays with rich learner metadata for second-language acquisition research.',
+      methodology:
+        'Essays collected from classroom contexts and double-annotated with an error typology, adjudicated for agreement.',
+      collectionPeriod: '2023 - 2025',
+      temporalCoverage: '2023 - 2025',
+      geographicCoverage: 'Learners from 9 countries',
+      language: 'English (learner)',
+      subjects: ['learner corpus', 'error annotation', 'EFL', 'second language acquisition'],
+      fileFormats: ['XML', 'TSV'],
+      sizeBytes: 1.8 * GB,
+      fileCount: 320,
+      sampleSize: 42000,
+    },
+    relationships: {
+      project: {
+        id: 'low-resource-language-toolkit',
+        title: 'Low-Resource Language Toolkit',
+        detail: 'Active',
+      },
+      grants: [
+        {
+          id: 'grant-dff-2021-087',
+          title: 'Digital Futures Fund — Grant 2021/087',
+          detail: '£180,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2024-0032',
+          title: 'Evaluating Annotation Consistency in Multilingual Corpora',
+          detail: 'Journal of Language Documentation · 2024 · 10.1000/placeholder.2024.0032',
+        },
+        {
+          id: 'pub-2024-0015',
+          title: 'Transfer Learning for Low-Resource Languages',
+          detail: 'Advances in Cross-Lingual NLP · 2024 · 10.1000/placeholder.2024.0015',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'National Autonomous University of Mexico'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0008'],
+    },
+    statistics: {
+      downloads: 4260,
+      views: 13800,
+      citations: 8,
+      versionCount: 2,
+      fileCount: 320,
+      sizeBytes: 1.8 * GB,
+      storageUsedGb: 3.2,
+    },
+    tags: ['learner corpus', 'error annotation', 'EFL', 'second language acquisition'],
+    collections: ['Corpora', 'Education Resources'],
+  }),
+
+  createDataset({
+    id: 'ldfna-field-notes-archive',
+    title: 'Language Documentation Field Notes Archive',
+    description:
+      'Digitised field notes, metadata records, and documentation materials from endangered language fieldwork, curated with community governance.',
+    status: 'published',
+    access: 'restricted',
+    verification: 'peer-reviewed',
+    doi: '10.1000/placeholder.dataset.0009',
+    creator: 'Dr. Jane Scholar',
+    institution: 'University of Oxford',
+    publishedAt: '2023-11-08',
+    updatedAt: '2026-04-30',
+    verifiedAt: '2023-12-01',
+    latestVersion: 'v2.1',
+    accessNote: 'Access decisions are made by the community governance board.',
+    versions: [
+      {
+        id: 'ldfna-v1',
+        version: 'v1.0',
+        publishedAt: '2023-11-08',
+        doi: '10.1000/placeholder.dataset.0009.v1',
+        sizeBytes: 84 * GB,
+        fileCount: 9600,
+        format: 'PDF / EAF / WAV',
+        status: 'published',
+        changes: 'Initial archive of digitised field notes and recordings.',
+      },
+      {
+        id: 'ldfna-v2',
+        version: 'v2.0',
+        publishedAt: '2025-07-22',
+        doi: '10.1000/placeholder.dataset.0009.v2',
+        sizeBytes: 90 * GB,
+        fileCount: 10800,
+        format: 'PDF / EAF / WAV',
+        status: 'published',
+        changes: 'Added 2 languages and linked metadata records.',
+      },
+      {
+        id: 'ldfna-v21',
+        version: 'v2.1',
+        publishedAt: '2026-04-30',
+        doi: '10.1000/placeholder.dataset.0009.v2.1',
+        sizeBytes: 92 * GB,
+        fileCount: 11200,
+        format: 'PDF / EAF / WAV',
+        status: 'published',
+        changes: 'Corrected metadata and added community access logs.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'ldfna-cl',
+        name: 'Community License',
+        abbreviation: 'CL',
+        url: 'https://scholatia.org/licenses/community-license',
+        type: 'restricted',
+        allowsCommercialUse: false,
+        allowsDerivatives: false,
+        attributionRequired: true,
+        description: 'Governed by agreements between researchers and speaker communities.',
+      },
+    ],
+    citations: [
+      {
+        id: 'ldfna-cit-1',
+        title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+        authors: ['J. Scholar', 'D. Linguist'],
+        venue: 'Language Resources and Evaluation',
+        year: '2021',
+        doi: '10.1000/placeholder.2021.0089',
+        type: 'Journal Article',
+        count: 89,
+      },
+      {
+        id: 'ldfna-cit-2',
+        title: 'Annotation Practices for Typologically Diverse Corpora',
+        authors: ['J. Scholar'],
+        venue: 'The Handbook of Language Resources',
+        year: '2022',
+        doi: '10.1000/placeholder.2022.0024',
+        type: 'Book Chapter',
+        count: 24,
+      },
+    ],
+    contributors: [
+      {
+        id: 'ldfna-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'University of Oxford',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'ldfna-con-2',
+        name: 'Dr. Dina Linguist',
+        said: 'SAID-0000-0000-0004',
+        role: 'data-curator',
+        institution: 'University of Oxford',
+      },
+      {
+        id: 'ldfna-con-3',
+        name: 'Dr. Amara Diallo',
+        said: 'SAID-0000-0000-0009',
+        role: 'data-collector',
+        institution: 'University of Dakar',
+      },
+    ],
+    metadata: {
+      summary:
+        'Long-term archive of field notes, recordings, and metadata from endangered language documentation projects.',
+      methodology:
+        'Standardised documentation workflows (EAF/ELAN) with persistent metadata records and community access review.',
+      collectionPeriod: '2016 - present',
+      temporalCoverage: 'Historic to contemporary',
+      geographicCoverage: 'West Africa, Mesoamerica, South Asia',
+      language: '14 languages',
+      subjects: ['field notes', 'documentation', 'endangered languages', 'metadata', 'archive'],
+      fileFormats: ['PDF', 'EAF', 'WAV'],
+      sizeBytes: 92 * GB,
+      fileCount: 11200,
+      sampleSize: 14,
+    },
+    relationships: {
+      project: {
+        id: 'cross-lingual-corpus-annotation',
+        title: 'Cross-Lingual Corpus Annotation',
+        detail: 'Completed',
+      },
+      grants: [
+        {
+          id: 'grant-lpf-archive',
+          title: 'Language Preservation Foundation — Digital Archive',
+          detail: '£120,000 awarded',
+        },
+        {
+          id: 'grant-hrf',
+          title: 'Horizon Research Fund',
+          detail: '£600,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2021-0089',
+          title: 'A Corpus Study of Syntactic Variation in Under-Resourced Languages',
+          detail: 'Language Resources and Evaluation · 2021 · 10.1000/placeholder.2021.0089',
+        },
+        {
+          id: 'pub-2022-0024',
+          title: 'Annotation Practices for Typologically Diverse Corpora',
+          detail: 'The Handbook of Language Resources · 2022 · 10.1000/placeholder.2022.0024',
+        },
+      ],
+      institutions: ['University of Oxford', 'University of Dakar'],
+      researchers: ['SAID-0000-0000-0004', 'SAID-0000-0000-0009'],
+    },
+    statistics: {
+      downloads: 980,
+      views: 5400,
+      citations: 6,
+      versionCount: 3,
+      fileCount: 11200,
+      sizeBytes: 92 * GB,
+      storageUsedGb: 92,
+    },
+    tags: ['field notes', 'documentation', 'endangered languages', 'metadata', 'archive'],
+    collections: ['Audio Archive', 'Special Collections'],
+  }),
+
+  createDataset({
+    id: 'clcg-citation-graph',
+    title: 'Computational Linguistics Citation Graph',
+    description:
+      'An open citation graph linking computational linguistics publications, used for bibliometric and impact analyses.',
+    status: 'published',
+    access: 'open',
+    verification: 'verified',
+    doi: '10.1000/placeholder.dataset.0010',
+    creator: 'Dr. Jane Scholar',
+    institution: 'Institute for Computational Linguistics',
+    publishedAt: '2024-09-15',
+    updatedAt: '2026-03-05',
+    verifiedAt: '2024-10-01',
+    latestVersion: 'v2.0',
+    versions: [
+      {
+        id: 'clcg-v1',
+        version: 'v1.0',
+        publishedAt: '2024-09-15',
+        doi: '10.1000/placeholder.dataset.0010.v1',
+        sizeBytes: 9 * GB,
+        fileCount: 120,
+        format: 'GraphML / CSV',
+        status: 'published',
+        changes: 'Initial citation graph covering 2010 - 2024.',
+      },
+      {
+        id: 'clcg-v2',
+        version: 'v2.0',
+        publishedAt: '2026-03-05',
+        doi: '10.1000/placeholder.dataset.0010.v2',
+        sizeBytes: 12 * GB,
+        fileCount: 180,
+        format: 'GraphML / CSV',
+        status: 'published',
+        changes: 'Extended to 2026 and enriched with venue metadata.',
+      },
+    ],
+    licenses: [
+      {
+        id: 'clcg-cc0',
+        name: 'Creative Commons Zero 1.0 Universal',
+        abbreviation: 'CC0-1.0',
+        url: 'https://creativecommons.org/publicdomain/zero/1.0/',
+        type: 'open',
+        allowsCommercialUse: true,
+        allowsDerivatives: true,
+        attributionRequired: false,
+        description: 'Public domain citation graph for unrestricted reuse.',
+      },
+    ],
+    citations: [
+      {
+        id: 'clcg-cit-1',
+        title: 'Multilingual Representations for Cross-Lingual Transfer Learning',
+        authors: ['J. Scholar', 'A. Mentor', 'E. Collaborator'],
+        venue: 'ACL Conference on Empirical Methods',
+        year: '2020',
+        doi: '10.1000/placeholder.2020.0210',
+        type: 'Conference Paper',
+        count: 210,
+      },
+      {
+        id: 'clcg-cit-2',
+        title: 'Benchmarking Transfer Learning across 40 Languages',
+        authors: ['J. Scholar', 'C. Researcher', 'S. Okafor'],
+        venue: 'EMNLP 2025 Proceedings',
+        year: '2025',
+        doi: '10.1000/placeholder.2025.0012',
+        type: 'Conference Paper',
+        count: 12,
+      },
+    ],
+    contributors: [
+      {
+        id: 'clcg-con-1',
+        name: 'Dr. Jane Scholar',
+        said: 'SAID-0000-0000-0001',
+        role: 'principal-investigator',
+        institution: 'Institute for Computational Linguistics',
+        orcid: '0000-0001-0000-0001',
+      },
+      {
+        id: 'clcg-con-2',
+        name: 'Sam Okafor',
+        said: 'SAID-0000-0000-0007',
+        role: 'software-engineer',
+        institution: 'Institute for Computational Linguistics',
+      },
+      {
+        id: 'clcg-con-3',
+        name: 'Prof. Yuki Tanaka',
+        said: 'SAID-0000-0000-0010',
+        role: 'researcher',
+        institution: 'Tokyo Institute of Technology',
+      },
+    ],
+    metadata: {
+      summary:
+        'Curated citation graph of computational linguistics publications with venue and author metadata for bibliometric analysis.',
+      methodology:
+        'Citations harvested from public indexes, deduplicated, and linked against author SAIDs and venue records.',
+      collectionPeriod: '2024 - 2026',
+      temporalCoverage: '2010 - 2026',
+      geographicCoverage: 'Global',
+      language: 'Metadata in English',
+      subjects: ['citation graph', 'bibliometrics', 'knowledge graph', 'impact'],
+      fileFormats: ['GraphML', 'CSV'],
+      sizeBytes: 12 * GB,
+      fileCount: 180,
+      sampleSize: 320000,
+    },
+    relationships: {
+      project: {
+        id: 'cross-lingual-evaluation-benchmark',
+        title: 'Cross-Lingual Evaluation Benchmark',
+        detail: 'Active',
+      },
+      grants: [
+        {
+          id: 'grant-hrf',
+          title: 'Horizon Research Fund',
+          detail: '£600,000 awarded',
+        },
+      ],
+      publications: [
+        {
+          id: 'pub-2020-0210',
+          title: 'Multilingual Representations for Cross-Lingual Transfer Learning',
+          detail: 'ACL Conference on Empirical Methods · 2020 · 10.1000/placeholder.2020.0210',
+        },
+        {
+          id: 'pub-2025-0012',
+          title: 'Benchmarking Transfer Learning across 40 Languages',
+          detail: 'EMNLP 2025 Proceedings · 2025 · 10.1000/placeholder.2025.0012',
+        },
+      ],
+      institutions: ['Institute for Computational Linguistics', 'Tokyo Institute of Technology'],
+      researchers: ['SAID-0000-0000-0001', 'SAID-0000-0000-0010'],
+    },
+    statistics: {
+      downloads: 2150,
+      views: 8900,
+      citations: 15,
+      versionCount: 2,
+      fileCount: 180,
+      sizeBytes: 12 * GB,
+      storageUsedGb: 21,
+    },
+    tags: ['citation graph', 'bibliometrics', 'knowledge graph', 'impact'],
+    collections: ['Benchmarks', 'Analytics'],
+  }),
+];
+
+export const DATASET_COLLECTIONS: DatasetCollection[] = [
+  {
+    id: 'corpora',
+    name: 'Corpora',
+    description: 'Annotated text, speech, and multimodal collections for training and evaluation.',
+    icon: '📚',
+    datasetCount: 4,
+  },
+  {
+    id: 'benchmarks',
+    name: 'Benchmarks',
+    description: 'Standardised evaluation suites for cross-lingual and multilingual research.',
+    icon: '🏁',
+    datasetCount: 2,
+  },
+  {
+    id: 'nlp-resources',
+    name: 'NLP Resources',
+    description: 'Reusable resources powering multilingual natural language processing.',
+    icon: '🧠',
+    datasetCount: 2,
+  },
+  {
+    id: 'toolkits',
+    name: 'Toolkits',
+    description: 'Open-source tools and annotated corpora for under-represented languages.',
+    icon: '🛠️',
+    datasetCount: 1,
+  },
+  {
+    id: 'guidelines',
+    name: 'Guidelines',
+    description: 'Annotation guidelines and documentation standards for community practice.',
+    icon: '📐',
+    datasetCount: 1,
+  },
+  {
+    id: 'audio-archive',
+    name: 'Audio Archive',
+    description: 'Digitised recordings and forced-alignment outputs for language documentation.',
+    icon: '🎙️',
+    datasetCount: 2,
+  },
+  {
+    id: 'special-collections',
+    name: 'Special Collections',
+    description: 'Controlled-access collections for sensitive or community-governed data.',
+    icon: '🔒',
+    datasetCount: 2,
+  },
+  {
+    id: 'education-resources',
+    name: 'Education Resources',
+    description: 'Learning and teaching resources derived from research data.',
+    icon: '🎓',
+    datasetCount: 1,
+  },
+  {
+    id: 'in-preparation',
+    name: 'In Preparation',
+    description: 'Datasets being collected, curated, and prepared for publication.',
+    icon: '📝',
+    datasetCount: 1,
+  },
+];
+
+export const DATASET_TIMELINE_ENTRIES: DatasetTimelineEntry[] = [
+  {
+    date: 'Jun 2026',
+    title: 'XBench v1.2 released',
+    detail: 'Cross-Lingual Evaluation Benchmark extended with 8 new languages',
+    type: 'Version',
+  },
+  {
+    date: 'Mar 2026',
+    title: 'Toolkit corpus v2 published',
+    detail: 'Low-Resource Language Toolkit annotated corpus released openly',
+    type: 'Collection',
+  },
+  {
+    date: 'Jan 2026',
+    title: 'MPF treebanks v3.1',
+    detail: 'Multilingual Parsing Framework treebanks updated with the 50th language',
+    type: 'Version',
+  },
+  {
+    date: 'Dec 2025',
+    title: 'Corpus data verified',
+    detail: 'Low-Resource corpus passed independent verification review',
+    type: 'Verification',
+  },
+  {
+    date: 'Sep 2025',
+    title: 'Fieldwork trip completed',
+    detail: 'Endangered language speech recordings collected with communities',
+    type: 'Collection',
+  },
+  {
+    date: 'Apr 2025',
+    title: 'Learner corpus published',
+    detail: 'Error-annotated learner corpus released under restricted access',
+    type: 'Publication',
+  },
+];
+
+export const DATASET_DOWNLOAD_TREND: DatasetDownloadTrendPoint[] = [
+  { period: 'Jan 2026', downloads: 980 },
+  { period: 'Feb 2026', downloads: 1150 },
+  { period: 'Mar 2026', downloads: 1420 },
+  { period: 'Apr 2026', downloads: 1280 },
+  { period: 'May 2026', downloads: 1860 },
+  { period: 'Jun 2026', downloads: 2240 },
+];
+
+export const RECENT_DATASETS: Dataset[] = [...DATASETS]
+  .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))
+  .slice(0, 3);
+
+function buildDatasetAnalytics(datasets: Dataset[]): DatasetAnalytics {
+  const totalDatasets = datasets.length;
+  const totalDownloads = datasets.reduce((sum, dataset) => sum + dataset.statistics.downloads, 0);
+  const totalCitations = datasets.reduce((sum, dataset) => sum + dataset.statistics.citations, 0);
+  const openDatasets = datasets.filter((dataset) => dataset.access === 'open').length;
+  const restrictedDatasets = totalDatasets - openDatasets;
+  const doiCount = datasets.filter((dataset) => Boolean(dataset.doi)).length;
+  const totalBytes = datasets.reduce((sum, dataset) => sum + dataset.statistics.sizeBytes, 0);
+  const storageUsedGb = Math.round((totalBytes / GB) * 10) / 10;
+  const latestPublished = [...datasets]
+    .filter((dataset) => dataset.publishedAt)
+    .sort((a, b) => (b.publishedAt ?? '').localeCompare(a.publishedAt ?? ''))[0];
+  const accessOrder: Array<Dataset['access']> = ['open', 'restricted', 'embargoed', 'controlled', 'private'];
+  const accessBreakdown = accessOrder
+    .map((label) => ({
+      label,
+      count: datasets.filter((dataset) => dataset.access === label).length,
+    }))
+    .filter((entry) => entry.count > 0);
+  const tagCounts = new Map<string, number>();
+  datasets.forEach((dataset) => {
+    dataset.tags.forEach((tag) => {
+      tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+    });
+  });
+  const topTags = [...tagCounts.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, 6)
+    .map(([tag]) => tag);
+
+  return {
+    totalDatasets,
+    totalDownloads,
+    downloadGrowthPercent: 34,
+    totalCitations,
+    citationGrowthPercent: 22,
+    openDatasets,
+    restrictedDatasets,
+    storageUsedGb,
+    doiCount,
+    latestVersion: latestPublished?.latestVersion ?? '—',
+    accessBreakdown,
+    topTags,
+    downloadTrend: DATASET_DOWNLOAD_TREND,
+  };
+}
+
+export const DATASET_ANALYTICS: DatasetAnalytics = buildDatasetAnalytics(DATASETS);
+
+export const FEATURED_DATASET: Dataset = DATASETS[0];

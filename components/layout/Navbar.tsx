@@ -1,11 +1,11 @@
 import React from 'react';
-import Button from '../ui/Button';
 import Logo from '../ui/Logo';
+import SessionControls from '../security/SessionControls';
 
 const navItems = [
   { label: 'Home', href: '#home' },
-  { label: 'Conferences', href: '#conferences' },
-  { label: 'Journals', href: '#journals' },
+  { label: 'Conferences', href: '/conferences' },
+  { label: 'Journals', href: '/journals' },
   { label: 'People', href: '#people' },
   { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
@@ -29,12 +29,7 @@ export default function Navbar({ className = '' }: NavbarProps) {
           ))}
         </nav>
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="secondary" href="/login" className="rounded-full border-slate-300 bg-white text-slate-700 shadow-none hover:border-slate-400 hover:bg-slate-50">
-            Login
-          </Button>
-          <Button variant="primary" href="/register" className="rounded-full shadow-md shadow-sky-500/20">
-            Register
-          </Button>
+          <SessionControls />
         </div>
       </div>
     </header>

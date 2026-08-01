@@ -7,3 +7,4 @@ export * from './conferences';
 export * from './journals';
 export * from './research';
 export * from './lifecycle';
+export * from './researchers';

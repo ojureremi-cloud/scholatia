@@ -1,22 +1,25 @@
 'use client';
 
 import React from 'react';
-import type { InstitutionProfile } from '@/types/identity';
+import type { Institution } from '@/types/institution';
 
 type InstitutionStatisticsProps = {
-  institution: InstitutionProfile;
+  institution: Institution;
   className?: string;
 };
 
 export default function InstitutionStatistics({ institution, className = '' }: InstitutionStatisticsProps) {
   const stats = [
-    { label: 'Students', value: institution.studentCount?.toLocaleString() ?? '—' },
-    { label: 'Faculty', value: institution.facultyCount?.toLocaleString() ?? '—' },
-    { label: 'Programs', value: institution.programCount?.toLocaleString() ?? '—' },
+    { label: 'Students', value: institution.statistics.students.toLocaleString('en-US') },
+    { label: 'Faculty', value: institution.statistics.faculty.toLocaleString('en-US') },
+    { label: 'Departments', value: institution.statistics.departments.toLocaleString('en-US') },
+    { label: 'Research centres', value: institution.statistics.researchCentres.toLocaleString('en-US') },
+    { label: 'Laboratories', value: institution.statistics.laboratories.toLocaleString('en-US') },
+    { label: 'Campuses', value: institution.statistics.campuses.toLocaleString('en-US') },
   ];
 
   return (
-    <div className={['grid gap-4 sm:grid-cols-3', className].filter(Boolean).join(' ')}>
+    <div className={['grid gap-4 sm:grid-cols-2 lg:grid-cols-3', className].filter(Boolean).join(' ')}>
       {stats.map((stat) => (
         <div key={stat.label} className="rounded-2xl border border-slate-200 bg-white p-4 shadow-card">
           <p className="text-sm text-slate-500">{stat.label}</p>

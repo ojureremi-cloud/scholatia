@@ -229,11 +229,11 @@ export interface SAIDProfile {
 
 export type ConferenceEventType = 'International Conference' | 'National Conference' | 'Regional Conference' | 'Symposium' | 'Workshop' | 'Seminar' | 'Colloquium' | 'Summer School' | 'Winter School' | 'Bootcamp' | 'Hackathon' | 'Research Meeting' | 'Doctoral Consortium' | 'Poster Session' | 'Webinar' | 'Virtual Conference' | 'Hybrid Conference' | 'Training Programme' | 'Executive Education';
 
-export type ConferenceRegistrationAudience = 'Researchers' | 'Students' | 'Institutions' | 'Publishers' | 'Sponsors' | 'Exhibitors' | 'Guests' | 'Media';
+export type ConferenceRegistrationAudience = 'Researchers' | 'Students' | 'Institutions' | 'Publishers' | 'Sponsors' | 'Exhibitors' | 'Guests' | 'Media' | 'Mentors';
 
 export type ConferenceSubmissionType = 'Abstract' | 'Full Paper' | 'Poster' | 'Workshop Proposal' | 'Tutorial Proposal' | 'Panel Proposal' | 'Demo' | 'Dataset' | 'Software';
 
-export type ConferenceCommitteeRole = 'Conference Chair' | 'Co-Chair' | 'Programme Chair' | 'Technical Chair' | 'Publication Chair' | 'Finance Chair' | 'Local Organising Committee' | 'Scientific Committee' | 'Review Committee' | 'Session Chairs' | 'Student Volunteers';
+export type ConferenceCommitteeRole = 'Conference Chair' | 'Co-Chair' | 'Programme Chair' | 'Technical Chair' | 'Publication Chair' | 'Finance Chair' | 'Integrity Chair' | 'Local Organising Committee' | 'Scientific Committee' | 'Review Committee' | 'Session Chairs' | 'Student Volunteers';
 
 export type JournalPublicationType = 'Journal' | 'Book' | 'Book Series' | 'Conference Proceedings' | 'Edited Volume' | 'Magazine' | 'Newsletter' | 'Technical Report' | 'Working Paper' | 'Preprint Server';
 
@@ -311,10 +311,20 @@ export interface EditorialStructureMember {
   affiliation?: string;
 }
 
+export type JournalArticleStatus =
+  | 'Draft'
+  | 'Editorial Screening'
+  | 'Under Review'
+  | 'In Revision'
+  | 'Accepted'
+  | 'Rejected'
+  | 'In Production'
+  | 'Published';
+
 export interface ArticleSummary {
   title: string;
   authors: string[];
-  status: 'Accepted' | 'Under Review' | 'Draft';
+  status: JournalArticleStatus;
 }
 
 export interface IssueSummary {
@@ -327,6 +337,174 @@ export interface VolumeSummary {
   volumeNumber: string;
   year: string;
   status: 'Published' | 'Upcoming';
+}
+
+export type JournalQuartile = 'Q1' | 'Q2' | 'Q3' | 'Q4';
+
+export interface JournalImpactMetrics {
+  impactFactor?: number;
+  fiveYearImpactFactor?: number;
+  citeScore?: number;
+  sjr?: number;
+  snip?: number;
+  hIndex?: number;
+  totalCitations?: number;
+  totalDownloads?: number;
+  quartile?: JournalQuartile;
+}
+
+export interface JournalIndexingRecord {
+  service: string;
+  status: 'Indexed' | 'In Review' | 'Not Indexed';
+}
+
+export interface CallForPapers {
+  id: string;
+  title: string;
+  theme: string;
+  deadline: string;
+  status: 'Open' | 'Closed' | 'Upcoming';
+  submissionTypes: JournalSubmissionType[];
+  targetIssue?: string;
+  guestEditor?: string;
+  description?: string;
+}
+
+export interface PublicationQueueEntry {
+  id: string;
+  title: string;
+  authors: string[];
+  stage: PublicationWorkflowStage;
+  doi?: string;
+  issue?: string;
+  scheduledPublication?: string;
+}
+
+export interface IssueScheduleEntry {
+  id: string;
+  issueNumber: string;
+  volume?: string;
+  year: string;
+  publicationDate: string;
+  status: 'Planned' | 'In Production' | 'Published';
+  theme?: string;
+  articles?: number;
+}
+
+export interface EditorialDecisionStatistics {
+  submitted: number;
+  underReview: number;
+  inRevision: number;
+  accepted: number;
+  rejected: number;
+  inProduction: number;
+  published: number;
+  acceptanceRate: number;
+  rejectionRate: number;
+  avgDaysToFirstDecision: number;
+  avgDaysToAcceptance: number;
+}
+
+export interface JournalPolicy {
+  articleProcessingCharges?: string;
+  submissionFee?: string;
+  embargoPeriod?: string;
+  licensing?: string;
+  copyright?: string;
+  plagiarismPolicy?: string;
+  dataPolicy?: string;
+  ethicsPolicy?: string;
+  appealsPolicy?: string;
+  conflictsOfInterestPolicy?: string;
+  preprintsPolicy?: string;
+}
+
+export interface JournalAnalytics {
+  annualSubmissions: number;
+  annualPublications: number;
+  acceptanceRate?: number;
+  rejectionRate?: number;
+  totalDownloads?: number;
+  totalCitations?: number;
+  altmetricScore?: number;
+  googleScholarRank?: string;
+  medianDaysToFirstDecision?: number;
+  medianDaysToAcceptance?: number;
+}
+
+export interface JournalRelationship {
+  id: string;
+  title: string;
+  detail?: string;
+}
+
+export interface JournalRelationships {
+  manuscripts: JournalRelationship[];
+  datasets: JournalRelationship[];
+  projects: JournalRelationship[];
+  authors: JournalRelationship[];
+  institutions: JournalRelationship[];
+  grants: JournalRelationship[];
+  publications: JournalRelationship[];
+}
+
+export interface JournalIssueRef {
+  journal: JournalProfile;
+  issue: IssueSummary;
+}
+
+export interface JournalVolumeRef {
+  journal: JournalProfile;
+  volume: VolumeSummary;
+}
+
+export interface JournalArticleRef {
+  journal: JournalProfile;
+  article: ArticleSummary;
+}
+
+export interface JournalCallForPapersRef {
+  journal: JournalProfile;
+  call: CallForPapers;
+}
+
+export interface JournalReviewerRef {
+  journal: JournalProfile;
+  reviewer: string;
+}
+
+export interface JournalPortfolioStatistics {
+  totalJournals: number;
+  openAccessJournals: number;
+  hybridJournals: number;
+  subscriptionJournals: number;
+  diamondJournals: number;
+  goldJournals: number;
+  publishedArticles: number;
+  acceptedArticles: number;
+  underReviewArticles: number;
+  inRevisionArticles: number;
+  rejectedArticles: number;
+  inProductionArticles: number;
+  activeCallsForPapers: number;
+  totalSubmissions: number;
+  avgTrustScore: number;
+}
+
+export interface JournalPortfolioAnalytics {
+  totalJournals: number;
+  totalArticles: number;
+  totalPublished: number;
+  totalSubmissions: number;
+  totalAccepted: number;
+  totalRejected: number;
+  totalDownloads: number;
+  totalCitations: number;
+  averageAcceptanceRate: number;
+  averageRejectionRate: number;
+  averageImpactFactor: number;
+  highestImpactJournal?: string;
+  mostCitedJournal?: string;
 }
 
 export interface JournalProfile {
@@ -363,6 +541,15 @@ export interface JournalProfile {
   issues: IssueSummary[];
   volumes: VolumeSummary[];
   latestIssue?: string;
+  doiPrefix?: string;
+  impactMetrics?: JournalImpactMetrics;
+  indexingRecords?: JournalIndexingRecord[];
+  callsForPapers?: CallForPapers[];
+  publicationQueue?: PublicationQueueEntry[];
+  issueSchedule?: IssueScheduleEntry[];
+  editorialDecisionStats?: EditorialDecisionStatistics;
+  policy?: JournalPolicy;
+  analytics?: JournalAnalytics;
 }
 
 export type InstitutionVerificationStatus = 'Pending' | 'Email Verified' | 'Domain Verified' | 'Document Verified' | 'Government Recognised' | 'Accredited' | 'Verified' | 'Trusted';
@@ -535,6 +722,7 @@ export const CONFERENCE_REGISTRATION_AUDIENCES: ConferenceRegistrationAudience[]
   'Exhibitors',
   'Guests',
   'Media',
+  'Mentors',
 ];
 
 export const CONFERENCE_SUBMISSION_TYPES: ConferenceSubmissionType[] = [
@@ -556,6 +744,7 @@ export const CONFERENCE_COMMITTEE_ROLES: ConferenceCommitteeRole[] = [
   'Technical Chair',
   'Publication Chair',
   'Finance Chair',
+  'Integrity Chair',
   'Local Organising Committee',
   'Scientific Committee',
   'Review Committee',

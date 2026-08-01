@@ -18,6 +18,7 @@ export { default as useConferenceSearch } from './useConferenceSearch';
 export { default as useConferenceRegistration } from './useConferenceRegistration';
 export { default as useConferenceCommittee } from './useConferenceCommittee';
 export { default as useConferenceSubmissions } from './useConferenceSubmissions';
+export { default as useConferenceSchedule } from './useConferenceSchedule';
 export { default as useJournal } from './useJournal';
 export { default as useJournalSearch } from './useJournalSearch';
 export { default as useSubmission } from './useSubmission';

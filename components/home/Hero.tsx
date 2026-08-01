@@ -17,10 +17,10 @@ export default function Hero() {
               Connecting researchers, students, institutions, journals, conferences, publishers and academic communities.
             </p>
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-              <Button href="#conferences" className="rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800">
+              <Button href="/conferences" className="rounded-full bg-slate-900 text-white shadow-lg shadow-slate-900/10 hover:bg-slate-800">
                 Explore Conferences
               </Button>
-              <Button variant="secondary" href="#journals" className="rounded-full">
+              <Button variant="secondary" href="/journals" className="rounded-full">
                 Find Journals
               </Button>
             </div>

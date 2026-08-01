@@ -1,6 +1,6 @@
 export const footerLinks = [
-  { label: 'Conferences', href: '#conferences' },
-  { label: 'Journals', href: '#journals' },
+  { label: 'Conferences', href: '/conferences' },
+  { label: 'Journals', href: '/journals' },
   { label: 'People', href: '#people' },
   { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
@@ -31,8 +31,8 @@ export const companyInfo = {
 
 export const navigationItems = [
   { label: 'Home', href: '#home' },
-  { label: 'Conferences', href: '#conferences' },
-  { label: 'Journals', href: '#journals' },
+  { label: 'Conferences', href: '/conferences' },
+  { label: 'Journals', href: '/journals' },
   { label: 'People', href: '#people' },
   { label: 'Institutions', href: '#institutions' },
   { label: 'About', href: '#about' },
