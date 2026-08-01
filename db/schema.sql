@@ -1340,3 +1340,197 @@ CREATE TABLE commerce_billing_addresses (
   is_default    BOOLEAN NOT NULL DEFAULT FALSE
 );
 
+-- ---------------------------------------------------------------------------
+-- commerce_currencies
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_currencies (
+  code         TEXT PRIMARY KEY,               -- CurrencyCode
+  name         TEXT NOT NULL,
+  symbol       TEXT NOT NULL,
+  minor_unit   INTEGER NOT NULL DEFAULT 2,
+  supported    BOOLEAN NOT NULL DEFAULT FALSE  -- designated settlement rail
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_exchange_rates
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_exchange_rates (
+  id          UUID PRIMARY KEY,
+  from_code   TEXT NOT NULL REFERENCES commerce_currencies (code),
+  to_code     TEXT NOT NULL REFERENCES commerce_currencies (code),
+  rate        NUMERIC NOT NULL,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (from_code <> to_code)
+);
+
+CREATE INDEX idx_commerce_exchange_rates_pair ON commerce_exchange_rates (from_code, to_code);
+
+-- ---------------------------------------------------------------------------
+-- commerce_bundles
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_bundles (
+  id               UUID PRIMARY KEY,
+  name             TEXT NOT NULL,
+  description      TEXT NOT NULL,
+  currency         TEXT NOT NULL,
+  list_total       NUMERIC NOT NULL,
+  bundle_price     NUMERIC NOT NULL,
+  savings          NUMERIC NOT NULL,
+  savings_percent  INTEGER NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'active', -- CommerceBundleStatus
+  featured         BOOLEAN NOT NULL DEFAULT FALSE,
+  tags             TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_bundle_products
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_bundle_products (
+  bundle_id   UUID NOT NULL REFERENCES commerce_bundles (id) ON DELETE CASCADE,
+  product_id  UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (bundle_id, product_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_product_variants
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_product_variants (
+  id            UUID PRIMARY KEY,
+  product_id    UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  sku           TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  attributes    JSONB NOT NULL DEFAULT '{}'::JSONB,
+  unit_price    NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  stock         INTEGER,
+  status        TEXT NOT NULL DEFAULT 'active' -- CommerceProductStatus
+);
+
+CREATE INDEX idx_commerce_product_variants_product_id ON commerce_product_variants (product_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_licenses
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_licenses (
+  id              UUID PRIMARY KEY,
+  license_number  TEXT NOT NULL,
+  product_id      UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  product_name    TEXT NOT NULL,
+  licensee_id     TEXT NOT NULL,
+  licensee_name   TEXT NOT NULL,
+  licensee_type   TEXT NOT NULL,               -- CommerceLicenseeType
+  seats           INTEGER NOT NULL,
+  term_months     INTEGER NOT NULL,
+  price           NUMERIC NOT NULL,
+  currency        TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'active', -- CommerceLicenseStatus
+  starts_at       TIMESTAMPTZ NOT NULL,
+  expires_at      TIMESTAMPTZ NOT NULL,
+  issued_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_licenses_product_id ON commerce_licenses (product_id);
+CREATE INDEX idx_commerce_licenses_licensee_id ON commerce_licenses (licensee_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_purchase_history
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_purchase_history (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES commerce_orders (id) ON DELETE CASCADE,
+  product_id    UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  product_name  TEXT NOT NULL,
+  product_type  TEXT NOT NULL,                 -- CommerceProductType
+  quantity      INTEGER NOT NULL,
+  unit_price    NUMERIC NOT NULL,
+  total         NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  purchased_at  TIMESTAMPTZ NOT NULL,
+  source_entity TEXT
+);
+
+CREATE INDEX idx_commerce_purchase_history_order_id ON commerce_purchase_history (order_id);
+CREATE INDEX idx_commerce_purchase_history_product_id ON commerce_purchase_history (product_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_participant_earnings
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_participant_earnings (
+  id                UUID PRIMARY KEY,
+  participant_type  TEXT NOT NULL,             -- CommerceRevenueParticipantType
+  participant_id    TEXT NOT NULL,
+  participant_name  TEXT NOT NULL,
+  currency          TEXT NOT NULL,
+  gross_revenue     NUMERIC NOT NULL,
+  platform_fees     NUMERIC NOT NULL DEFAULT 0,
+  commissions       NUMERIC NOT NULL DEFAULT 0,
+  refunds           NUMERIC NOT NULL DEFAULT 0,
+  net_revenue       NUMERIC NOT NULL,
+  available_balance NUMERIC NOT NULL DEFAULT 0,
+  pending_balance   NUMERIC NOT NULL DEFAULT 0,
+  lifetime_revenue  NUMERIC NOT NULL,
+  period_start      DATE NOT NULL,
+  period_end        DATE NOT NULL
+);
+
+CREATE INDEX idx_commerce_participant_earnings_type ON commerce_participant_earnings (participant_type, participant_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_relationships
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_relationships (
+  id           UUID PRIMARY KEY,
+  kind         TEXT NOT NULL,                  -- CommerceRelationshipKind
+  from_entity  TEXT NOT NULL,
+  from_id      TEXT NOT NULL,
+  to_entity    TEXT NOT NULL,
+  to_id        TEXT NOT NULL,
+  description  TEXT NOT NULL
+);
+
+CREATE INDEX idx_commerce_relationships_from ON commerce_relationships (from_entity, from_id);
+CREATE INDEX idx_commerce_relationships_to ON commerce_relationships (to_entity, to_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_lifecycle_coverage
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_lifecycle_coverage (
+  stage                 TEXT PRIMARY KEY,      -- ResearchLifecycleStageId
+  stage_name            TEXT NOT NULL,
+  revenue_stream        TEXT NOT NULL,
+  surfaces              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  example_product_ids   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_payment_methods (Phase 2.0)
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_payment_methods (
+  id            UUID PRIMARY KEY,
+  method        TEXT NOT NULL UNIQUE,          -- CommercePaymentMethod
+  label         TEXT NOT NULL,
+  supported_providers TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  recurring     BOOLEAN NOT NULL DEFAULT FALSE,
+  escrow        BOOLEAN NOT NULL DEFAULT FALSE,
+  enabled       BOOLEAN NOT NULL DEFAULT TRUE
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_financial_reports (Phase 2.0)
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_financial_reports (
+  id              UUID PRIMARY KEY,
+  period          TEXT NOT NULL,               -- 'YYYY-MM' accounting period
+  currency        TEXT NOT NULL,
+  gross_revenue   NUMERIC NOT NULL,
+  platform_fees   NUMERIC NOT NULL DEFAULT 0,
+  commissions     NUMERIC NOT NULL DEFAULT 0,
+  refunds         NUMERIC NOT NULL DEFAULT 0,
+  net_revenue     NUMERIC NOT NULL,
+  revenue_streams JSONB NOT NULL DEFAULT '[]'::JSONB,
+  generated_at    DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE INDEX idx_commerce_financial_reports_period ON commerce_financial_reports (period);
+

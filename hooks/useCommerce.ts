@@ -12,7 +12,7 @@ import {
   providersForMethod,
   validateCoupon,
 } from '@/lib/commerce';
-import { COMMERCE_PORTFOLIO, BOOST_PREVIEWS } from '@/constants/placeholder-commerce';
+import { COMMERCE_PORTFOLIO, BOOST_PREVIEWS, FINANCIAL_REPORTS } from '@/constants/placeholder-commerce';
 import type {
   CommerceCart,
   CommerceCoupon,
@@ -141,6 +141,16 @@ export default function useCommerce() {
     [],
   );
 
+  const featuredProducts = useMemo(
+    () => COMMERCE_PORTFOLIO.products.filter((product) => product.featured),
+    [],
+  );
+
+  const featuredBundle = useMemo(
+    () => COMMERCE_PORTFOLIO.bundles.find((bundle) => bundle.featured) ?? COMMERCE_PORTFOLIO.bundles[0],
+    [],
+  );
+
   const boostCostOf = useCallback((tierId: string, audienceSize: number) => calculateBoostCost({ tierId, audienceSize }), []);
 
   return useMemo(
@@ -149,8 +159,11 @@ export default function useCommerce() {
       statistics: COMMERCE_PORTFOLIO.statistics,
       analytics: COMMERCE_PORTFOLIO.analytics,
       revenueReport: COMMERCE_PORTFOLIO.revenueReport,
+      financialReports: FINANCIAL_REPORTS,
       products: COMMERCE_PORTFOLIO.products,
       featuredProduct,
+      featuredProducts,
+      featuredBundle,
       query,
       setQuery,
       category,
@@ -189,12 +202,23 @@ export default function useCommerce() {
       transactions: COMMERCE_PORTFOLIO.transactions,
       gatewayProviders: COMMERCE_PORTFOLIO.gatewayProviders,
       billingAddresses: COMMERCE_PORTFOLIO.billingAddresses,
+      currencies: COMMERCE_PORTFOLIO.currencies,
+      exchangeRates: COMMERCE_PORTFOLIO.exchangeRates,
+      bundles: COMMERCE_PORTFOLIO.bundles,
+      productVariants: COMMERCE_PORTFOLIO.productVariants,
+      licenses: COMMERCE_PORTFOLIO.licenses,
+      purchaseHistory: COMMERCE_PORTFOLIO.purchaseHistory,
+      participantEarnings: COMMERCE_PORTFOLIO.participantEarnings,
+      relationships: COMMERCE_PORTFOLIO.relationships,
+      lifecycleCoverage: COMMERCE_PORTFOLIO.lifecycleCoverage,
     }),
     [
       query,
       category,
       filteredProducts,
       featuredProduct,
+      featuredProducts,
+      featuredBundle,
       carts,
       selectedCartId,
       selectedCart,

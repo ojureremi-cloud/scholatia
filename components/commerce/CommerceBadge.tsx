@@ -2,18 +2,23 @@ import React from 'react';
 import Badge from '@/components/ui/Badge';
 import {
   formatBillingCycle,
+  formatBundleStatus,
   formatCommissionStatus,
   formatCouponStatus,
   formatEscrowStatus,
   formatInvoiceStatus,
+  formatLicenseStatus,
   formatOrderStatus,
+  formatParticipantType,
   formatPaymentMethod,
   formatPaymentStatus,
+  formatPricingModel,
   formatProductType,
   formatPromotionKind,
   formatReceiptStatus,
   formatRefundReason,
   formatRefundStatus,
+  formatRelationshipKind,
   formatSettlementStatus,
   formatSubscriberType,
   formatSubscriptionStatus,
@@ -23,18 +28,23 @@ import {
 } from './format';
 import type {
   CommerceBillingCycle,
+  CommerceBundleStatus,
   CommerceCommissionStatus,
   CommerceCouponStatus,
   CommerceEscrowStatus,
   CommerceInvoiceStatus,
+  CommerceLicenseStatus,
   CommerceOrderStatus,
   CommercePaymentMethod,
   CommercePaymentStatus,
+  CommercePricingModel,
   CommerceProductType,
   CommercePromotionKind,
   CommerceReceiptStatus,
   CommerceRefundReason,
   CommerceRefundStatus,
+  CommerceRelationshipKind,
+  CommerceRevenueParticipantType,
   CommerceSettlementStatus,
   CommerceSubscriberType,
   CommerceSubscriptionStatus,
@@ -215,4 +225,44 @@ export function CommissionStatusBadge({ status }: { status: CommerceCommissionSt
 
 export function TransactionKindBadge({ kind }: { kind: CommerceTransactionKind }) {
   return <Badge variant="default">{formatTransactionKind(kind)}</Badge>;
+}
+
+const bundleVariants: Record<CommerceBundleStatus, BadgeVariant> = {
+  active: 'success',
+  draft: 'default',
+  expired: 'default',
+};
+
+const licenseVariants: Record<CommerceLicenseStatus, BadgeVariant> = {
+  active: 'success',
+  suspended: 'warning',
+  expired: 'default',
+  cancelled: 'default',
+};
+
+const participantVariants: Record<CommerceRevenueParticipantType, BadgeVariant> = {
+  institution: 'info',
+  publisher: 'info',
+  researcher: 'success',
+  vendor: 'warning',
+};
+
+export function BundleStatusBadge({ status }: { status: CommerceBundleStatus }) {
+  return <Badge variant={bundleVariants[status]}>{formatBundleStatus(status)}</Badge>;
+}
+
+export function LicenseStatusBadge({ status }: { status: CommerceLicenseStatus }) {
+  return <Badge variant={licenseVariants[status]}>{formatLicenseStatus(status)}</Badge>;
+}
+
+export function PricingModelBadge({ model }: { model: CommercePricingModel }) {
+  return <Badge variant="default">{formatPricingModel(model)}</Badge>;
+}
+
+export function ParticipantTypeBadge({ type }: { type: CommerceRevenueParticipantType }) {
+  return <Badge variant={participantVariants[type]}>{formatParticipantType(type)}</Badge>;
+}
+
+export function RelationshipKindBadge({ kind }: { kind: CommerceRelationshipKind }) {
+  return <Badge variant="info">{formatRelationshipKind(kind)}</Badge>;
 }

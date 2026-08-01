@@ -1,17 +1,21 @@
 import type {
   CommerceBillingAddress,
   CommerceBillingCycle,
+  CommerceBundle,
   CommerceCart,
   CommerceCommission,
   CommerceCoupon,
   CommerceDiscount,
   CommerceEscrow,
+  CommerceExchangeRate,
+  CommerceFinancialReport,
   CommerceGatewayCapabilities,
   CommerceGatewayProvider,
   CommerceInvoice,
   CommerceInvoiceLine,
   CommerceOrder,
   CommerceOrderItem,
+  CommerceParticipantEarnings,
   CommercePayment,
   CommercePaymentIntent,
   CommercePaymentMethod,
@@ -20,10 +24,13 @@ import type {
   CommercePlatformAnalytics,
   CommercePlatformFee,
   CommerceProduct,
+  CommerceProductVariant,
   CommercePromotion,
+  CommercePurchaseRecord,
   CommerceReceipt,
   CommerceRefund,
   CommerceRefundStatus,
+  CommerceRevenueParticipantType,
   CommerceRevenueReport,
   CommerceSettlement,
   CommerceStatistics,
@@ -752,8 +759,10 @@ const GATEWAY_CAPABILITIES: Record<CommercePaymentProvider, CommerceGatewayCapab
   Flutterwave: { currencies: ['USD', 'NGN', 'GHS', 'KES', 'ZAR', 'EGP'], methods: ['card', 'mobile-money', 'bank-transfer'], recurring: true, escrow: false, refunds: true, payouts: true, verification: true },
   Stripe: { currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'CHF', 'JPY'], methods: ['card', 'bank-transfer', 'apple-pay', 'google-pay'], recurring: true, escrow: false, refunds: true, payouts: true, verification: true },
   PayPal: { currencies: ['USD', 'EUR', 'GBP'], methods: ['paypal', 'card'], recurring: true, escrow: false, refunds: true, payouts: true, verification: true },
+  Razorpay: { currencies: ['USD', 'INR', 'GBP'], methods: ['card', 'bank-transfer', 'mobile-money'], recurring: true, escrow: false, refunds: true, payouts: true, verification: true },
   Wise: { currencies: ['USD', 'EUR', 'GBP', 'NGN', 'KES', 'INR'], methods: ['bank-transfer'], recurring: false, escrow: false, refunds: true, payouts: true, verification: true },
   'Bank Transfer': { currencies: ['USD', 'EUR', 'GBP', 'NGN', 'ZAR', 'KES', 'EGP', 'GHS', 'BRL', 'INR'], methods: ['bank-transfer'], recurring: false, escrow: false, refunds: true, payouts: true, verification: false },
+  'Institutional Invoice': { currencies: ['USD', 'EUR', 'GBP', 'NGN', 'ZAR', 'KES', 'EGP', 'GHS'], methods: ['institution-billing'], recurring: true, escrow: false, refunds: false, payouts: false, verification: false },
   'Apple Pay': { currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF'], methods: ['apple-pay', 'card'], recurring: true, escrow: false, refunds: true, payouts: false, verification: false },
   'Google Pay': { currencies: ['USD', 'EUR', 'GBP', 'CAD', 'AUD', 'JPY', 'CHF', 'INR'], methods: ['google-pay', 'card'], recurring: true, escrow: false, refunds: true, payouts: false, verification: false },
   Wallet: { currencies: ['USD', 'EUR', 'GBP', 'NGN', 'ZAR', 'KES', 'EGP', 'GHS'], methods: ['wallet', 'credits'], recurring: true, escrow: false, refunds: true, payouts: true, verification: false },
@@ -810,6 +819,8 @@ const REVENUE_STREAM_BY_KIND: Record<CommerceTransactionKind, string> = {
   'premium-analytics': 'premium-analytics',
   'api-access': 'api-access',
   'enterprise-licensing': 'enterprise-licensing',
+  'ai-services': 'ai-services',
+  'digital-download': 'digital-download',
   refund: 'refunds',
   payout: 'payouts',
   disbursement: 'disbursements',
@@ -835,6 +846,8 @@ export function computeRevenueReport(input: {
     'premium-analytics',
     'api-access',
     'enterprise-licensing',
+    'ai-services',
+    'digital-download',
   ]);
 
   const byStreamMap = new Map<string, number>();
@@ -891,6 +904,8 @@ export function computeRevenueReport(input: {
     premiumAnalyticsRevenue: byStreamMap.get('premium-analytics') ?? 0,
     apiAccessRevenue: byStreamMap.get('api-access') ?? 0,
     enterpriseLicensingRevenue: byStreamMap.get('enterprise-licensing') ?? 0,
+    aiServicesRevenue: byStreamMap.get('ai-services') ?? 0,
+    downloadRevenue: byStreamMap.get('digital-download') ?? 0,
     platformFees,
     commissions,
     refunds: refunded,
@@ -899,6 +914,35 @@ export function computeRevenueReport(input: {
     byPeriod,
     byMethod,
   };
+}
+
+/** Group a revenue report into closed monthly accounting periods. */
+export function computeFinancialReports(
+  report: CommerceRevenueReport,
+  currency: CurrencyCode = 'USD',
+): CommerceFinancialReport[] {
+  return report.byPeriod.map((period) => {
+    const periodReport = report.byStream.map((stream) => ({
+      stream: stream.stream,
+      revenue: roundMoney(stream.revenue),
+    }));
+    const grossRevenue = period.revenue;
+    const commissions = roundMoney(grossRevenue * COMMERCE_MARKETPLACE_COMMISSION_RATE);
+    const platformFees = roundMoney(grossRevenue * COMMERCE_PLATFORM_FEE_RATE);
+    const refunds = roundMoney(report.refunds / Math.max(1, report.byPeriod.length));
+    return {
+      id: `financial-report-${period.period}`,
+      period: period.period,
+      currency,
+      grossRevenue,
+      platformFees,
+      commissions,
+      refunds,
+      netRevenue: roundMoney(grossRevenue - refunds),
+      revenueByStream: periodReport,
+      generatedAt: new Date().toISOString().slice(0, 10),
+    };
+  });
 }
 
 /** Aggregate platform analytics across the whole commercial engine. */
@@ -1016,6 +1060,15 @@ export function buildCommercePortfolio(input: {
   platformFees: CommercePlatformFee[];
   gatewayProviders: CommerceGatewayProvider[];
   billingAddresses: CommerceBillingAddress[];
+  currencies: CommercePortfolio['currencies'];
+  exchangeRates: CommercePortfolio['exchangeRates'];
+  bundles: CommercePortfolio['bundles'];
+  productVariants: CommercePortfolio['productVariants'];
+  licenses: CommercePortfolio['licenses'];
+  purchaseHistory: CommercePortfolio['purchaseHistory'];
+  participantEarnings: CommercePortfolio['participantEarnings'];
+  relationships: CommercePortfolio['relationships'];
+  lifecycleCoverage: CommercePortfolio['lifecycleCoverage'];
   vendors: readonly { id: string }[];
 }): CommercePortfolio {
   return {
@@ -1024,6 +1077,260 @@ export function buildCommercePortfolio(input: {
     analytics: computePlatformAnalytics(input),
     revenueReport: computeRevenueReport(input),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Currency & exchange-rate helpers
+// ---------------------------------------------------------------------------
+
+/** Locale-aware currency formatting without any external library. */
+export function formatCurrency(amount: number, currency: string): string {
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
+    }).format(amount);
+  } catch {
+    return `${currency} ${amount}`;
+  }
+}
+
+/** Convert an amount between two currencies through a quoted rate table. */
+export function convertCurrency(
+  amount: number,
+  from: string,
+  to: string,
+  rates: readonly CommerceExchangeRate[],
+): { amount: number; rate: number; from: string; to: string } {
+  if (from === to) return { amount: roundMoney(amount), rate: 1, from, to };
+  const quote = rates.find((rate) => rate.from === from && rate.to === to);
+  const rate = quote?.rate ?? 1;
+  return { amount: roundMoney(amount * rate), rate, from, to };
+}
+
+/** Find a quoted rate between two currencies, either direction. */
+export function findExchangeRate(
+  rates: readonly CommerceExchangeRate[],
+  from: string,
+  to: string,
+): CommerceExchangeRate | undefined {
+  if (from === to) return undefined;
+  return rates.find((rate) => rate.from === from && rate.to === to) ??
+    rates.find((rate) => rate.from === to && rate.to === from);
+}
+
+// ---------------------------------------------------------------------------
+// Bundles, variants, licences
+// ---------------------------------------------------------------------------
+
+/** Bundle pricing: list total, bundle price, savings, and saving percent. */
+export function calculateBundlePrice(input: {
+  bundle: Pick<CommerceBundle, 'id' | 'name' | 'description' | 'productIds' | 'currency' | 'status' | 'featured' | 'tags'>;
+  products: readonly CommerceProduct[];
+  bundlePrice: number;
+}): CommerceBundle {
+  const members = input.bundle.productIds
+    .map((productId) => input.products.find((product) => product.id === productId))
+    .filter((product): product is CommerceProduct => product != null);
+  const listTotal = roundMoney(members.reduce((sum, product) => sum + effectiveProductPrice(product), 0));
+  const savings = roundMoney(Math.max(0, listTotal - input.bundlePrice));
+  const savingsPercent = listTotal > 0 ? Math.round((savings / listTotal) * 100) : 0;
+  return {
+    id: input.bundle.id,
+    name: input.bundle.name,
+    description: input.bundle.description,
+    productIds: input.bundle.productIds,
+    currency: input.bundle.currency,
+    listTotal,
+    bundlePrice: roundMoney(input.bundlePrice),
+    savings,
+    savingsPercent,
+    status: input.bundle.status,
+    featured: input.bundle.featured,
+    tags: input.bundle.tags,
+  };
+}
+
+/** Price a specific product configuration (variant) for cart purposes. */
+export function variantPrice(variant: CommerceProductVariant): number {
+  return roundMoney(variant.unitPrice);
+}
+
+// ---------------------------------------------------------------------------
+// Settlement, refunds, purchase history
+// ---------------------------------------------------------------------------
+
+/** Settlement calculator: what actually lands in a participant's account. */
+export function calculateSettlement(input: {
+  gross: number;
+  commissionRatePercent?: number;
+  platformFeeRatePercent?: number;
+  withdrawalFeeRatePercent?: number;
+  currency?: string;
+}): {
+  gross: number;
+  commission: number;
+  platformFee: number;
+  withdrawalFee: number;
+  net: number;
+  currency: string;
+} {
+  const commission = calculateMarketplaceCommission({ grossAmount: input.gross, ratePercent: input.commissionRatePercent });
+  const platformFee = calculatePlatformFee({ amount: input.gross, scope: 'payout', fee: input.platformFeeRatePercent != null ? { id: 'inline', scope: 'payout', ratePercent: input.platformFeeRatePercent, description: 'Inline fee' } : undefined });
+  const afterFees = roundMoney(input.gross - commission.amount - platformFee.amount);
+  const withdrawalFee = roundMoney(Math.max(1, afterFees * ((input.withdrawalFeeRatePercent ?? COMMERCE_WITHDRAWAL_FEE_RATE * 100) / 100)));
+  return {
+    gross: roundMoney(input.gross),
+    commission: commission.amount,
+    platformFee: platformFee.amount,
+    withdrawalFee,
+    net: roundMoney(Math.max(0, afterFees - withdrawalFee)),
+    currency: input.currency ?? 'USD',
+  };
+}
+
+/** Refunds attached to a specific order. */
+export function refundsForOrder(refunds: readonly CommerceRefund[], orderId: string): CommerceRefund[] {
+  return refunds.filter((refund) => refund.orderId === orderId);
+}
+
+/** Total refunded value attached to an order (completed + processing). */
+export function refundedTotalForOrder(refunds: readonly CommerceRefund[], orderId: string): number {
+  return roundMoney(
+    refundsForOrder(refunds, orderId)
+      .filter((refund) => refund.status === 'completed' || refund.status === 'processing')
+      .reduce((sum, refund) => sum + refund.amount, 0),
+  );
+}
+
+/** Whether an order is still eligible for a full refund. */
+export function canRefundOrder(order: CommerceOrder): boolean {
+  return !['refunded', 'cancelled'].includes(order.status) && order.paymentStatus === 'paid';
+}
+
+/** Derive a purchase-history ledger from placed orders. */
+export function purchaseHistoryFromOrders(orders: readonly CommerceOrder[]): CommercePurchaseRecord[] {
+  return orders.flatMap((order) =>
+    order.items.map((item) => ({
+      id: `ph-${order.id}-${item.productId}`,
+      orderId: order.id,
+      productId: item.productId,
+      productName: item.name,
+      productType: 'product' as const,
+      quantity: item.quantity,
+      unitPrice: item.unitPrice,
+      total: item.total,
+      currency: order.currency,
+      purchasedAt: order.placedAt,
+    })),
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sorting & filtering
+// ---------------------------------------------------------------------------
+
+export function sortTransactionsByDate(
+  transactions: readonly CommerceTransaction[],
+  descending = true,
+): CommerceTransaction[] {
+  return [...transactions].sort((a, b) =>
+    descending ? b.createdAt.localeCompare(a.createdAt) : a.createdAt.localeCompare(b.createdAt),
+  );
+}
+
+export function filterTransactionsByKind(
+  transactions: readonly CommerceTransaction[],
+  kinds: readonly CommerceTransactionKind[],
+): CommerceTransaction[] {
+  return transactions.filter((transaction) => kinds.includes(transaction.kind));
+}
+
+export function sortOrdersByDate(orders: readonly CommerceOrder[], descending = true): CommerceOrder[] {
+  return [...orders].sort((a, b) =>
+    descending ? b.placedAt.localeCompare(a.placedAt) : a.placedAt.localeCompare(b.placedAt),
+  );
+}
+
+export function filterOrdersByStatus(
+  orders: readonly CommerceOrder[],
+  statuses: readonly CommerceOrder['status'][],
+): CommerceOrder[] {
+  return orders.filter((order) => statuses.includes(order.status));
+}
+
+// ---------------------------------------------------------------------------
+// Participant revenue sharing
+// ---------------------------------------------------------------------------
+
+/** Aggregate per-participant earnings for a period from ledger records. */
+export function computeParticipantEarnings(input: {
+  orders: readonly CommerceOrder[];
+  commissions: readonly CommerceCommission[];
+  refunds: readonly CommerceRefund[];
+  periodStart?: string;
+  periodEnd?: string;
+}): CommerceParticipantEarnings[] {
+  const { orders, commissions, refunds } = input;
+  const byParticipant = new Map<string, CommerceParticipantEarnings>();
+
+  const upsert = (id: string, participantType: CommerceRevenueParticipantType, participantId: string, participantName: string, currency: CurrencyCode) => {
+    const key = `${participantType}:${participantId}`;
+    const existing = byParticipant.get(key);
+    if (existing) return existing;
+    const entry: CommerceParticipantEarnings = {
+      id,
+      participantType,
+      participantId,
+      participantName,
+      currency,
+      grossRevenue: 0,
+      platformFees: 0,
+      commissions: 0,
+      refunds: 0,
+      netRevenue: 0,
+      availableBalance: 0,
+      pendingBalance: 0,
+      lifetimeRevenue: 0,
+      periodStart: input.periodStart ?? '2026-01-01',
+      periodEnd: input.periodEnd ?? '2026-07-31',
+    };
+    byParticipant.set(key, entry);
+    return entry;
+  };
+
+  for (const order of orders) {
+    const participantId = order.buyerId;
+    if (!participantId) continue;
+    const entry = upsert(`earn-${participantId}`, 'researcher', participantId, order.buyerName, order.currency);
+    entry.grossRevenue = roundMoney(entry.grossRevenue + order.total);
+    entry.lifetimeRevenue = roundMoney(entry.lifetimeRevenue + order.total);
+  }
+
+  const vendorByOrder = new Map<string, string>();
+  for (const commission of commissions) {
+    vendorByOrder.set(commission.orderId, commission.vendorId);
+    const entry = upsert(`earn-${commission.vendorId}`, 'vendor', commission.vendorId, `Vendor ${commission.vendorId}`, commission.currency);
+    entry.grossRevenue = roundMoney(entry.grossRevenue + commission.grossAmount);
+    entry.commissions = roundMoney(entry.commissions + commission.amount);
+    entry.lifetimeRevenue = roundMoney(entry.lifetimeRevenue + commission.grossAmount);
+  }
+
+  for (const refund of refunds) {
+    const vendorId = vendorByOrder.get(refund.orderId);
+    if (!vendorId) continue;
+    const entry = byParticipant.get(`vendor:${vendorId}`);
+    if (entry) entry.refunds = roundMoney(entry.refunds + refund.amount);
+  }
+
+  for (const entry of byParticipant.values()) {
+    entry.netRevenue = roundMoney(entry.grossRevenue - entry.platformFees - entry.commissions - entry.refunds);
+    entry.availableBalance = roundMoney(entry.netRevenue * 0.7);
+    entry.pendingBalance = roundMoney(entry.netRevenue * 0.3);
+  }
+
+  return Array.from(byParticipant.values());
 }
 
 export default {
@@ -1043,4 +1350,9 @@ export default {
   calculateBoostCost,
   estimatePromotionReach,
   calculateRefund,
+  formatCurrency,
+  convertCurrency,
+  calculateBundlePrice,
+  calculateSettlement,
+  computeParticipantEarnings,
 } as const;

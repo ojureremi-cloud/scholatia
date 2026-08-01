@@ -11,4 +11,6 @@ export * from './researchers';
 export * from './intelligence';
 export * from './ads';
 export * from './marketplace';
+export { discountPercentOf, invoiceTotal } from './commerce';
+export * from './commerce';
 export * from './trust';

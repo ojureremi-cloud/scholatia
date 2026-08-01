@@ -1,12 +1,19 @@
 import type {
   CommerceBillingAddress,
+  CommerceBundle,
   CommerceCart,
   CommerceCommission,
   CommerceCoupon,
+  CommerceCurrency,
   CommerceEscrow,
+  CommerceExchangeRate,
+  CommerceFinancialReport,
   CommerceGatewayProvider,
   CommerceInvoice,
+  CommerceLicense,
+  CommerceLifecycleCoverage,
   CommerceOrder,
+  CommerceParticipantEarnings,
   CommercePayment,
   CommercePaymentIntent,
   CommercePaymentProvider,
@@ -15,9 +22,13 @@ import type {
   CommercePortfolio,
   CommerceProduct,
   CommerceProductType,
+  CommerceProductVariant,
   CommercePromotion,
+  CommercePurchaseRecord,
   CommerceReceipt,
   CommerceRefund,
+  CommerceRelationship,
+  CommerceRevenueParticipantType,
   CommerceRevenueReport,
   CommerceSettlement,
   CommerceStatistics,
@@ -30,23 +41,26 @@ import type {
   CommerceWallet,
   CommerceWalletTransaction,
 } from '@/types/commerce';
-import { COMMERCE_CURRENT_DATE } from '@/types/commerce';
+import { COMMERCE_CURRENT_DATE, COMMERCE_CURRENCIES } from '@/types/commerce';
 import type { CurrencyCode } from '@/types/funding';
 import type { AdCampaign } from '@/types/ads';
 
 import {
   buildCommercePortfolio,
   calculateBoostCost,
+  calculateBundlePrice,
   calculateMarketplaceCommission,
   calculateOrder,
   calculateSubscriptionCost,
   computeCommerceStatistics,
+  computeFinancialReports,
   computePlatformAnalytics,
   computeRevenueReport,
   estimatePromotionReach,
   generateInvoiceNumber,
   generateReceipt,
   providerCapabilities,
+  purchaseHistoryFromOrders,
   recomputeWalletBalance,
 } from '@/lib/commerce';
 
@@ -57,6 +71,8 @@ import { INSTITUTIONS } from '@/constants/placeholder-institutions';
 import { PUBLISHERS } from '@/constants/placeholder-publishers';
 import { JOURNALS } from '@/constants/placeholder-journals';
 import { CONFERENCES } from '@/constants/placeholder-conferences';
+import { DATASETS } from '@/constants/placeholder-datasets';
+import { DISCOVERY_ITEMS } from '@/constants/placeholder-discovery';
 
 /**
  * Placeholder data for the Scholatia Commerce & Marketplace Engine (Phase 1.9B).
@@ -285,6 +301,38 @@ const PRODUCT_SEEDS: ProductSeed[] = [
     vendorId: 'vendor-oxford-academic-services',
     vendorName: 'Oxford Academic Services',
     tags: ['curriculum', 'teaching', 'templates'],
+  },
+  {
+    id: 'prod-ai-discovery-analytics',
+    sku: 'DIG-9001',
+    name: 'AI Discovery Analytics',
+    summary: 'AI-generated intelligence over your discovery and engagement footprint.',
+    description: 'Tailored analytics over your discovery, citation, and engagement signals that surface funding and collaboration opportunities.',
+    type: 'digital-product',
+    category: 'research-analytics',
+    price: 40,
+    currency: USD,
+    vendorId: 'vendor-scholatia-press',
+    vendorName: 'Scholatia',
+    sourceId: DISCOVERY_ITEMS[0]?.id,
+    sourceEntity: 'discovery-item',
+    tags: ['analytics', 'ai'],
+  },
+  {
+    id: 'prod-dataset-download',
+    sku: 'DIG-4003',
+    name: 'Licensed Dataset Download',
+    summary: 'Instant download access to a published, verified research dataset.',
+    description: 'Full download of a verified dataset with its metadata and accompanying documentation.',
+    type: 'digital-product',
+    category: 'research-data',
+    price: 14,
+    currency: USD,
+    vendorId: 'vendor-scholatia-press',
+    vendorName: 'Scholatia',
+    sourceId: DATASETS[0]?.id,
+    sourceEntity: 'dataset',
+    tags: ['dataset', 'data'],
   },
   {
     id: 'prod-boost-growth',
@@ -844,6 +892,32 @@ const ORDER_SEEDS: OrderSeed[] = [
     placedAt: '2026-07-22T13:00:00.000Z',
     completedAt: '2026-07-22T13:05:00.000Z',
   },
+  {
+    id: 'ord-2026-0015',
+    buyerId: 'ojuri',
+    buyerName: researcherName('ojuri'),
+    buyerEmail: 'ojuri@university.edu',
+    vendorId: 'vendor-scholatia-press',
+    items: [{ productId: 'prod-ai-discovery-analytics', quantity: 1 }],
+    status: 'completed',
+    paymentStatus: 'paid',
+    paymentMethod: 'credits',
+    placedAt: '2026-07-25T09:30:00.000Z',
+    completedAt: '2026-07-25T09:31:00.000Z',
+  },
+  {
+    id: 'ord-2026-0016',
+    buyerId: 'jscholar',
+    buyerName: researcherName('jscholar'),
+    buyerEmail: 'jscholar@university.edu',
+    vendorId: 'vendor-scholatia-press',
+    items: [{ productId: 'prod-dataset-download', quantity: 1 }],
+    status: 'completed',
+    paymentStatus: 'paid',
+    paymentMethod: 'wallet',
+    placedAt: '2026-07-20T10:45:00.000Z',
+    completedAt: '2026-07-20T10:46:00.000Z',
+  },
 ];
 
 export const ORDERS: CommerceOrder[] = ORDER_SEEDS.map((seed, index) => {
@@ -1375,6 +1449,10 @@ export const TRANSACTIONS: CommerceTransaction[] = [
   { id: 'tx-2026-0014', reference: 'TXN-2026-0014', kind: 'disbursement', amount: 100, currency: USD, status: 'pending', method: 'wallet', provider: 'Wallet', description: 'Grant disbursement — Early-career research fund', createdAt: '2026-07-31T08:00:00.000Z' },
   { id: 'tx-2026-0015', reference: 'TXN-2026-0015', kind: 'featured', amount: 130, currency: USD, status: 'paid', method: 'wallet', provider: 'Wallet', orderId: 'ord-2026-0014', description: 'Featured Listing ×2', createdAt: '2026-07-22T13:00:00.000Z' },
   { id: 'tx-2026-0016', reference: 'TXN-2026-0016', kind: 'purchase', amount: 310, currency: USD, status: 'paid', method: 'bank-transfer', provider: 'Bank Transfer', orderId: 'ord-2026-0011', description: 'Conference Promotion Package', createdAt: '2026-07-18T08:40:00.000Z' },
+  { id: 'tx-2026-0017', reference: 'TXN-2026-0017', kind: 'ai-services', amount: 40, currency: USD, status: 'paid', method: 'credits', provider: 'Credits', orderId: 'ord-2026-0015', description: 'AI discovery analytics — researcher', createdAt: '2026-07-25T09:30:00.000Z' },
+  { id: 'tx-2026-0018', reference: 'TXN-2026-0018', kind: 'ai-services', amount: 120, currency: USD, status: 'paid', method: 'card', provider: 'Stripe', description: 'Trust analytics & reputation intelligence', createdAt: '2026-07-27T14:00:00.000Z' },
+  { id: 'tx-2026-0019', reference: 'TXN-2026-0019', kind: 'digital-download', amount: 14, currency: USD, status: 'paid', method: 'wallet', provider: 'Wallet', orderId: 'ord-2026-0016', description: `Dataset download — ${DATASETS[0]?.title ?? 'UD Treebanks'}`, createdAt: '2026-07-20T10:45:00.000Z' },
+  { id: 'tx-2026-0020', reference: 'TXN-2026-0020', kind: 'digital-download', amount: 22, currency: USD, status: 'paid', method: 'card', provider: 'Stripe', description: 'Licensed dataset bundle download', createdAt: '2026-07-28T16:20:00.000Z' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -1401,8 +1479,10 @@ const PROVIDER_META: { provider: CommercePaymentProvider; displayName: string; e
   { provider: 'Flutterwave', displayName: 'Flutterwave', enabled: true, sandbox: true },
   { provider: 'Stripe', displayName: 'Stripe', enabled: true, sandbox: true },
   { provider: 'PayPal', displayName: 'PayPal', enabled: true, sandbox: true },
+  { provider: 'Razorpay', displayName: 'Razorpay', enabled: true, sandbox: true },
   { provider: 'Wise', displayName: 'Wise', enabled: true, sandbox: true },
   { provider: 'Bank Transfer', displayName: 'Bank Transfer', enabled: true, sandbox: true },
+  { provider: 'Institutional Invoice', displayName: 'Institutional Invoice', enabled: true, sandbox: true },
   { provider: 'Apple Pay', displayName: 'Apple Pay', enabled: false, sandbox: true },
   { provider: 'Google Pay', displayName: 'Google Pay', enabled: false, sandbox: true },
   { provider: 'Wallet', displayName: 'Scholatia Wallet', enabled: true, sandbox: false },
@@ -1485,6 +1565,277 @@ export const COMMERCE_REVENUE_REPORT: CommerceRevenueReport = computeRevenueRepo
 });
 
 // ---------------------------------------------------------------------------
+// Financial reports (Phase 2.0)
+// ---------------------------------------------------------------------------
+
+export const FINANCIAL_REPORTS: CommerceFinancialReport[] = computeFinancialReports(COMMERCE_REVENUE_REPORT, USD);
+
+export const FEATURED_FINANCIAL_REPORT: CommerceFinancialReport = FINANCIAL_REPORTS[FINANCIAL_REPORTS.length - 1];
+
+// ---------------------------------------------------------------------------
+// Currencies, exchange rates, pricing models (Phase 1.9D)
+// ---------------------------------------------------------------------------
+
+export { COMMERCE_CURRENCIES };
+
+export const COMMERCE_EXCHANGE_RATES: CommerceExchangeRate[] = [
+  { id: 'fx-usd-gbp', from: 'USD', to: 'GBP', rate: 0.78, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-gbp-usd', from: 'GBP', to: 'USD', rate: 1.28, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-eur', from: 'USD', to: 'EUR', rate: 0.92, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-ngn', from: 'USD', to: 'NGN', rate: 1540, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-zar', from: 'USD', to: 'ZAR', rate: 18.4, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-ghs', from: 'USD', to: 'GHS', rate: 14.9, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-kes', from: 'USD', to: 'KES', rate: 129.2, updatedAt: '2026-07-31T00:00:00.000Z' },
+  { id: 'fx-usd-jpy', from: 'USD', to: 'JPY', rate: 151.6, updatedAt: '2026-07-31T00:00:00.000Z' },
+];
+
+// ---------------------------------------------------------------------------
+// Bundles, product variants, licences
+// ---------------------------------------------------------------------------
+
+export const COMMERCE_BUNDLES: CommerceBundle[] = [
+  calculateBundlePrice({
+    bundle: {
+      id: 'bundle-analysis-suite',
+      name: 'Analysis Suite',
+      description: 'Statistical analysis service plus the SPSS masterclass and the statistics textbook.',
+      productIds: ['prod-statistical-analysis', 'prod-spss-masterclass', 'prod-stats-textbook'],
+      currency: USD,
+      status: 'active',
+      featured: true,
+      tags: ['analysis', 'training'],
+    },
+    products: PRODUCTS,
+    bundlePrice: 420,
+  }),
+  calculateBundlePrice({
+    bundle: {
+      id: 'bundle-research-starter',
+      name: 'Research Starter Kit',
+      description: 'A curated dataset, the statistics textbook, and a consultation hour to get going.',
+      productIds: ['prod-research-dataset', 'prod-stats-textbook', 'prod-consultation'],
+      currency: USD,
+      status: 'active',
+      featured: true,
+      tags: ['starter', 'data'],
+    },
+    products: PRODUCTS,
+    bundlePrice: 240,
+  }),
+  calculateBundlePrice({
+    bundle: {
+      id: 'bundle-grant-readiness',
+      name: 'Grant Readiness Pack',
+      description: 'Grant writing support plus a live SPSS masterclass seat.',
+      productIds: ['prod-grant-writing', 'prod-spss-masterclass'],
+      currency: USD,
+      status: 'active',
+      featured: false,
+      tags: ['grants', 'training'],
+    },
+    products: PRODUCTS,
+    bundlePrice: 220,
+  }),
+  calculateBundlePrice({
+    bundle: {
+      id: 'bundle-conference-marketing',
+      name: 'Conference Marketing Kit',
+      description: 'Call for papers campaign, featured listing, and a growth boost.',
+      productIds: ['prod-cfp-campaign', 'prod-featured-listing', 'prod-boost-growth'],
+      currency: USD,
+      status: 'draft',
+      featured: false,
+      tags: ['conference', 'promotion'],
+    },
+    products: PRODUCTS,
+    bundlePrice: 240,
+  }),
+];
+
+export const COMMERCE_PRODUCT_VARIANTS: CommerceProductVariant[] = [
+  { id: 'variant-spss-self-paced', productId: 'prod-spss-masterclass', sku: 'CRS-2001-SELF', name: 'Self-paced cohort', attributes: { mode: 'self-paced', cohort: '2026-Q3' }, unitPrice: 120, currency: USD, stock: 120, status: 'active' },
+  { id: 'variant-spss-live', productId: 'prod-spss-masterclass', sku: 'CRS-2001-LIVE', name: 'Live cohort', attributes: { mode: 'live', cohort: '2026-Q3' }, unitPrice: 180, currency: USD, stock: 40, status: 'active' },
+  { id: 'variant-consult-60', productId: 'prod-consultation', sku: 'SRV-1005-60', name: '60-minute session', attributes: { duration: '60min', format: 'video' }, unitPrice: 60, currency: USD, status: 'active' },
+  { id: 'variant-consult-90', productId: 'prod-consultation', sku: 'SRV-1005-90', name: '90-minute session', attributes: { duration: '90min', format: 'video' }, unitPrice: 90, currency: USD, status: 'active' },
+  { id: 'variant-enterprise-25', productId: 'prod-enterprise-license', sku: 'ENT-0002-25', name: 'Up to 25 seats', attributes: { seats: '25', term: 'annual' }, unitPrice: 6000, currency: USD, status: 'active' },
+  { id: 'variant-enterprise-100', productId: 'prod-enterprise-license', sku: 'ENT-0002-100', name: 'Up to 100 seats', attributes: { seats: '100', term: 'annual' }, unitPrice: 18000, currency: USD, status: 'active' },
+  { id: 'variant-dataset-community', productId: 'prod-research-dataset', sku: 'DIG-4001-COMMUNITY', name: 'Community access', attributes: { tier: 'community' }, unitPrice: 0, currency: USD, status: 'active' },
+  { id: 'variant-dataset-full', productId: 'prod-research-dataset', sku: 'DIG-4001-FULL', name: 'Full research license', attributes: { tier: 'research' }, unitPrice: 180, currency: USD, status: 'active' },
+];
+
+export const COMMERCE_LICENSES: CommerceLicense[] = [
+  {
+    id: 'lic-enterprise-university',
+    licenseNumber: 'LIC-ENT-2026-0001',
+    productId: 'prod-enterprise-license',
+    productName: productById.get('prod-enterprise-license')?.name ?? 'Enterprise License — Institution',
+    licenseeId: 'SAID-INST-0000',
+    licenseeName: INSTITUTIONS[0]?.profile.institutionName ?? 'University of Ibadan',
+    licenseeType: 'institution',
+    seats: 100,
+    termMonths: 12,
+    price: 4800,
+    currency: USD,
+    status: 'active',
+    startsAt: '2026-06-01',
+    expiresAt: '2027-05-31',
+    issuedAt: '2026-06-01',
+  },
+  {
+    id: 'lic-publisher-api',
+    licenseNumber: 'LIC-API-2026-0002',
+    productId: 'prod-api-access',
+    productName: productById.get('prod-api-access')?.name ?? 'API Access',
+    licenseeId: 'scholatia-press',
+    licenseeName: PUBLISHERS[0]?.name ?? 'Scholatia Press',
+    licenseeType: 'publisher',
+    seats: 25,
+    termMonths: 12,
+    price: 6000,
+    currency: USD,
+    status: 'active',
+    startsAt: '2026-03-01',
+    expiresAt: '2027-02-28',
+    issuedAt: '2026-03-01',
+  },
+  {
+    id: 'lic-journal-analytics',
+    licenseNumber: 'LIC-ANA-2026-0003',
+    productId: 'prod-premium-analytics',
+    productName: productById.get('prod-premium-analytics')?.name ?? 'Premium Analytics',
+    licenseeId: 'JNL-001',
+    licenseeName: JOURNALS[0]?.journalTitle ?? 'Scholatia Journal of Open Research',
+    licenseeType: 'journal',
+    seats: 12,
+    termMonths: 12,
+    price: 1440,
+    currency: USD,
+    status: 'expired',
+    startsAt: '2025-06-01',
+    expiresAt: '2026-05-31',
+    issuedAt: '2025-06-01',
+  },
+  {
+    id: 'lic-conference-analytics',
+    licenseNumber: 'LIC-ANA-2026-0004',
+    productId: 'prod-premium-analytics',
+    productName: productById.get('prod-premium-analytics')?.name ?? 'Premium Analytics',
+    licenseeId: 'siri-conf',
+    licenseeName: CONFERENCES[0]?.title ?? 'Scholatia International Conference',
+    licenseeType: 'conference',
+    seats: 20,
+    termMonths: 6,
+    price: 720,
+    currency: USD,
+    status: 'active',
+    startsAt: '2026-04-01',
+    expiresAt: '2026-09-30',
+    issuedAt: '2026-04-01',
+  },
+  {
+    id: 'lic-researcher-dataset',
+    licenseNumber: 'LIC-DAT-2026-0005',
+    productId: 'prod-research-dataset',
+    productName: productById.get('prod-research-dataset')?.name ?? 'Curated Research Dataset',
+    licenseeId: 'ojuri',
+    licenseeName: researcherName('ojuri'),
+    licenseeType: 'researcher',
+    seats: 1,
+    termMonths: 12,
+    price: 180,
+    currency: USD,
+    status: 'active',
+    startsAt: '2026-07-15',
+    expiresAt: '2027-07-14',
+    issuedAt: '2026-07-15',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// Purchase history, participant earnings, relationships, lifecycle coverage
+// ---------------------------------------------------------------------------
+
+export const COMMERCE_PURCHASE_HISTORY: CommercePurchaseRecord[] = purchaseHistoryFromOrders(ORDERS).map((record) => {
+  const product = productById.get(record.productId);
+  return {
+    ...record,
+    productType: product?.type ?? record.productType,
+    ...(product?.sourceId ? { sourceEntity: product.sourceId } : {}),
+  };
+});
+
+const PARTICIPANT_SEEDS: { buyerId: string; participantType: CommerceRevenueParticipantType; participantName: string }[] = [
+  { buyerId: 'ojuri', participantType: 'researcher', participantName: researcherName('ojuri') },
+  { buyerId: 'smith', participantType: 'researcher', participantName: researcherName('smith') },
+  { buyerId: 'adebayo', participantType: 'researcher', participantName: researcherName('adebayo') },
+  { buyerId: 'maria', participantType: 'researcher', participantName: researcherName('maria') },
+  { buyerId: 'jscholar', participantType: 'researcher', participantName: researcherName('jscholar') },
+  { buyerId: 'SAID-INST-0000', participantType: 'institution', participantName: INSTITUTIONS[0]?.profile.institutionName ?? 'University of Ibadan' },
+  { buyerId: 'siri-conf', participantType: 'institution', participantName: CONFERENCES[0]?.title ?? 'Scholatia International Conference' },
+  { buyerId: 'scholatia-press', participantType: 'publisher', participantName: PUBLISHERS[0]?.name ?? 'Scholatia Press' },
+  { buyerId: 'JNL-001', participantType: 'publisher', participantName: JOURNALS[0]?.journalTitle ?? 'Scholatia Journal of Open Research' },
+  { buyerId: 'adv-scholatia-open-research-press', participantType: 'publisher', participantName: 'Scholatia Open Research Press' },
+];
+
+export const COMMERCE_PARTICIPANT_EARNINGS: CommerceParticipantEarnings[] = PARTICIPANT_SEEDS.map((seed) => {
+  const participantOrders = ORDERS.filter((order) => order.buyerId === seed.buyerId);
+  const grossRevenue = participantOrders.reduce((sum, order) => sum + order.total, 0);
+  const platformFees = participantOrders.reduce((sum, order) => sum + order.platformFee, 0);
+  const refunded = REFUNDS.filter((refund) => participantOrders.some((order) => order.id === refund.orderId)).reduce((sum, refund) => sum + refund.amount, 0);
+  const commissions = 0;
+  const netRevenue = grossRevenue - platformFees - commissions - refunded;
+  const pending = participantOrders.filter((order) => order.status === 'processing').reduce((sum, order) => sum + order.total, 0);
+  return {
+    id: `earn-${seed.buyerId}`,
+    participantType: seed.participantType,
+    participantId: seed.buyerId,
+    participantName: seed.participantName,
+    currency: USD,
+    grossRevenue,
+    platformFees,
+    commissions,
+    refunds: refunded,
+    netRevenue,
+    availableBalance: netRevenue - pending,
+    pendingBalance: pending,
+    lifetimeRevenue: grossRevenue,
+    periodStart: '2026-01-01',
+    periodEnd: '2026-07-31',
+  };
+});
+
+export const COMMERCE_RELATIONSHIPS: CommerceRelationship[] = [
+  { id: 'rel-ojuri-buys-analysis', kind: 'buys', fromEntity: 'researcher', fromId: 'ojuri', toEntity: 'order', toId: 'ord-2026-0001', description: 'Purchased Statistical Analysis Service' },
+  { id: 'rel-institution-buys-license', kind: 'buys', fromEntity: 'institution', fromId: 'SAID-INST-0000', toEntity: 'order', toId: 'ord-2026-0008', description: 'Purchased Enterprise License — Institution' },
+  { id: 'rel-journal-buys-sponsorship', kind: 'buys', fromEntity: 'journal', fromId: 'JNL-001', toEntity: 'order', toId: 'ord-2026-0010', description: 'Sponsored listing plus premium analytics' },
+  { id: 'rel-institution-subscribes', kind: 'subscribes', fromEntity: 'institution', fromId: 'SAID-INST-0000', toEntity: 'subscription', toId: 'sub-uni-ibadan', description: 'Institution Membership — annual' },
+  { id: 'rel-ojuri-subscribes', kind: 'subscribes', fromEntity: 'researcher', fromId: 'ojuri', toEntity: 'subscription', toId: 'sub-ojuri-pro', description: 'Researcher Pro plan' },
+  { id: 'rel-lab-sells-analysis', kind: 'sells', fromEntity: 'vendor', fromId: 'vendor-ibadan-statistics-lab', toEntity: 'order', toId: 'ord-2026-0001', description: 'Sold statistical analysis service' },
+  { id: 'rel-lab-settles', kind: 'settles', fromEntity: 'vendor', fromId: 'vendor-ibadan-statistics-lab', toEntity: 'settlement', toId: 'settle-2026-0001', description: 'Settlement of commission payouts' },
+  { id: 'rel-publisher-promotes', kind: 'promotes', fromEntity: 'publisher', fromId: 'adv-scholatia-open-research-press', toEntity: 'order', toId: 'ord-2026-0014', description: 'Featured listing promotion' },
+  { id: 'rel-platform-disburses', kind: 'disburses', fromEntity: 'platform', fromId: 'scholatia', toEntity: 'transaction', toId: 'tx-2026-0014', description: 'Grant disbursement to early-career research fund' },
+  { id: 'rel-institution-licensed', kind: 'licenses', fromEntity: 'institution', fromId: 'SAID-INST-0000', toEntity: 'license', toId: 'lic-enterprise-university', description: 'Enterprise license for institution' },
+];
+
+export const COMMERCE_LIFECYCLE_COVERAGE: CommerceLifecycleCoverage[] = [
+  { stage: 'idea', stageName: 'Idea', revenueStream: 'AI services', surfaces: ['AI discovery analytics'], exampleProductIds: ['prod-ai-discovery-analytics'] },
+  { stage: 'concept-note', stageName: 'Concept Note', revenueStream: 'Consultancy', surfaces: ['Research consultation'], exampleProductIds: ['prod-consultation'] },
+  { stage: 'proposal', stageName: 'Proposal', revenueStream: 'Professional services', surfaces: ['Grant writing & proposal review'], exampleProductIds: ['prod-grant-writing'] },
+  { stage: 'funding', stageName: 'Funding', revenueStream: 'Disbursements', surfaces: ['Grant disbursements', 'Institution membership'], exampleProductIds: ['prod-enterprise-license'] },
+  { stage: 'project', stageName: 'Project', revenueStream: 'Subscriptions', surfaces: ['Researcher Pro', 'Workspace projects'], exampleProductIds: ['prod-vendor-membership-pro'] },
+  { stage: 'dataset', stageName: 'Dataset', revenueStream: 'Digital downloads', surfaces: ['Dataset downloads', 'Licensed dataset access'], exampleProductIds: ['prod-research-dataset', 'prod-dataset-download'] },
+  { stage: 'analysis', stageName: 'Analysis', revenueStream: 'Marketplace', surfaces: ['Statistical analysis', 'GIS & spatial analysis'], exampleProductIds: ['prod-statistical-analysis', 'prod-gis-analysis'] },
+  { stage: 'manuscript', stageName: 'Manuscript', revenueStream: 'Marketplace', surfaces: ['Academic editing & proofreading'], exampleProductIds: ['prod-academic-editing'] },
+  { stage: 'submission', stageName: 'Submission', revenueStream: 'Marketplace', surfaces: ['Publication support services'], exampleProductIds: ['prod-academic-editing'] },
+  { stage: 'peer-review', stageName: 'Peer Review', revenueStream: 'Subscriptions', surfaces: ['Journal analytics'], exampleProductIds: ['prod-premium-analytics'] },
+  { stage: 'publication', stageName: 'Publication', revenueStream: 'Advertising', surfaces: ['Call for papers', 'Featured listings'], exampleProductIds: ['prod-cfp-campaign', 'prod-featured-listing'] },
+  { stage: 'conference', stageName: 'Conference', revenueStream: 'Advertising', surfaces: ['Conference campaigns', 'Sponsored placements'], exampleProductIds: ['prod-conference-campaign', 'prod-sponsored-listing'] },
+  { stage: 'citation', stageName: 'Citation', revenueStream: 'Premium analytics', surfaces: ['Citation & impact analytics'], exampleProductIds: ['prod-premium-analytics'] },
+  { stage: 'impact', stageName: 'Impact', revenueStream: 'AI services', surfaces: ['Trust & reputation intelligence'], exampleProductIds: ['prod-ai-discovery-analytics'] },
+  { stage: 'knowledge-transfer', stageName: 'Knowledge Transfer', revenueStream: 'Digital products', surfaces: ['Curriculum toolkits', 'Training courses'], exampleProductIds: ['prod-curriculum-design', 'prod-spss-masterclass'] },
+];
+
+// ---------------------------------------------------------------------------
 // Featured exports
 // ---------------------------------------------------------------------------
 
@@ -1505,6 +1856,13 @@ export const FEATURED_VENDOR_EARNINGS: CommerceVendorEarnings = VENDOR_EARNINGS[
 export const FEATURED_TRANSACTION: CommerceTransaction = TRANSACTIONS.find((transaction) => transaction.kind === 'subscription') ?? TRANSACTIONS[0];
 export const FEATURED_PAYMENT: CommercePayment = PAYMENTS[0];
 export const FEATURED_GATEWAY: CommerceGatewayProvider = GATEWAY_PROVIDERS.find((provider) => provider.provider === 'Paystack') ?? GATEWAY_PROVIDERS[0];
+export const FEATURED_CURRENCY: CommerceCurrency = COMMERCE_CURRENCIES[0];
+export const FEATURED_EXCHANGE_RATE: CommerceExchangeRate = COMMERCE_EXCHANGE_RATES[0];
+export const FEATURED_BUNDLE: CommerceBundle = COMMERCE_BUNDLES[0];
+export const FEATURED_PRODUCT_VARIANT: CommerceProductVariant = COMMERCE_PRODUCT_VARIANTS[0];
+export const FEATURED_LICENSE: CommerceLicense = COMMERCE_LICENSES[0];
+export const FEATURED_PURCHASE_RECORD: CommercePurchaseRecord = COMMERCE_PURCHASE_HISTORY[0];
+export const FEATURED_PARTICIPANT_EARNINGS: CommerceParticipantEarnings = COMMERCE_PARTICIPANT_EARNINGS[0];
 
 export const COMMERCE_PORTFOLIO: CommercePortfolio = buildCommercePortfolio({
   products: PRODUCTS,
@@ -1530,5 +1888,14 @@ export const COMMERCE_PORTFOLIO: CommercePortfolio = buildCommercePortfolio({
   platformFees: PLATFORM_FEES,
   gatewayProviders: GATEWAY_PROVIDERS,
   billingAddresses: BILLING_ADDRESSES,
+  currencies: [...COMMERCE_CURRENCIES],
+  exchangeRates: COMMERCE_EXCHANGE_RATES,
+  bundles: COMMERCE_BUNDLES,
+  productVariants: COMMERCE_PRODUCT_VARIANTS,
+  licenses: COMMERCE_LICENSES,
+  purchaseHistory: COMMERCE_PURCHASE_HISTORY,
+  participantEarnings: COMMERCE_PARTICIPANT_EARNINGS,
+  relationships: COMMERCE_RELATIONSHIPS,
+  lifecycleCoverage: COMMERCE_LIFECYCLE_COVERAGE,
   vendors: Array.from(vendorIds, (id) => ({ id })),
 });

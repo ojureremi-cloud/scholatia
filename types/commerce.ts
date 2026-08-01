@@ -1,4 +1,5 @@
 import type { CurrencyCode } from '@/types/funding';
+import type { ResearchLifecycleStageId } from '@/types/research';
 
 /**
  * The Scholatia Commerce & Marketplace Engine of the Scholatia ecosystem.
@@ -203,8 +204,10 @@ export type CommercePaymentProvider =
   | 'Flutterwave'
   | 'Stripe'
   | 'PayPal'
+  | 'Razorpay'
   | 'Wise'
   | 'Bank Transfer'
+  | 'Institutional Invoice'
   | 'Apple Pay'
   | 'Google Pay'
   | 'Wallet'
@@ -676,6 +679,8 @@ export type CommerceTransactionKind =
   | 'premium-analytics'
   | 'api-access'
   | 'enterprise-licensing'
+  | 'ai-services'
+  | 'digital-download'
   | 'payout'
   | 'disbursement';
 
@@ -707,6 +712,8 @@ export interface CommerceRevenueReport {
   premiumAnalyticsRevenue: number;
   apiAccessRevenue: number;
   enterpriseLicensingRevenue: number;
+  aiServicesRevenue: number;
+  downloadRevenue: number;
   platformFees: number;
   commissions: number;
   refunds: number;
@@ -759,6 +766,21 @@ export interface CommerceStatistics {
   supportedProviders: number;
 }
 
+/** A closed accounting period of platform finance, reported in one currency. */
+export interface CommerceFinancialReport {
+  id: string;
+  /** `YYYY-MM` accounting period the report covers. */
+  period: string;
+  currency: CurrencyCode;
+  grossRevenue: number;
+  platformFees: number;
+  commissions: number;
+  refunds: number;
+  netRevenue: number;
+  revenueByStream: { stream: string; revenue: number }[];
+  generatedAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Aggregate root
 // ---------------------------------------------------------------------------
@@ -790,6 +812,15 @@ export interface CommercePortfolio {
   platformFees: CommercePlatformFee[];
   gatewayProviders: CommerceGatewayProvider[];
   billingAddresses: CommerceBillingAddress[];
+  currencies: CommerceCurrency[];
+  exchangeRates: CommerceExchangeRate[];
+  bundles: CommerceBundle[];
+  productVariants: CommerceProductVariant[];
+  licenses: CommerceLicense[];
+  purchaseHistory: CommercePurchaseRecord[];
+  participantEarnings: CommerceParticipantEarnings[];
+  relationships: CommerceRelationship[];
+  lifecycleCoverage: CommerceLifecycleCoverage[];
 }
 
 // ---------------------------------------------------------------------------
@@ -837,8 +868,10 @@ export const COMMERCE_PAYMENT_PROVIDERS: readonly CommercePaymentProvider[] = [
   'Flutterwave',
   'Stripe',
   'PayPal',
+  'Razorpay',
   'Wise',
   'Bank Transfer',
+  'Institutional Invoice',
   'Apple Pay',
   'Google Pay',
   'Wallet',
@@ -928,6 +961,8 @@ export const COMMERCE_TRANSACTION_KINDS: readonly CommerceTransactionKind[] = [
   'premium-analytics',
   'api-access',
   'enterprise-licensing',
+  'ai-services',
+  'digital-download',
   'payout',
   'disbursement',
 ];
@@ -943,6 +978,8 @@ export const COMMERCE_REVENUE_STREAMS: readonly string[] = [
   'premium-analytics',
   'api-access',
   'enterprise-licensing',
+  'ai-services',
+  'digital-download',
 ];
 
 export const COMMERCE_PROMOTION_KINDS: readonly CommercePromotionKind[] = [
@@ -969,3 +1006,226 @@ export const COMMERCE_WITHDRAWAL_FEE_RATE = 0.015;
 export const COMMERCE_DEFAULT_TAX_RATE = 0.05;
 
 export const COMMERCE_CURRENT_DATE = '2026-07-31';
+
+// ---------------------------------------------------------------------------
+// Currencies, exchange rates, pricing models
+// ---------------------------------------------------------------------------
+
+/** A currency the Commerce engine can price, settle, and display in. */
+export interface CommerceCurrency {
+  code: CurrencyCode;
+  name: string;
+  symbol: string;
+  /** Decimal places used when rendering an amount. */
+  minorUnit: number;
+  /** Whether the currency is a designated settlement rail (wallet, payouts). */
+  supported: boolean;
+}
+
+/** A quoted conversion between two currencies at a point in time. */
+export interface CommerceExchangeRate {
+  id: string;
+  from: CurrencyCode;
+  to: CurrencyCode;
+  /** How many `to` units one `from` unit buys. */
+  rate: number;
+  updatedAt: string;
+}
+
+/** How a price is determined on the platform. */
+export type CommercePricingModel =
+  | 'fixed'
+  | 'tiered'
+  | 'usage-based'
+  | 'credit-based'
+  | 'subscription'
+  | 'negotiable'
+  | 'auction';
+
+// ---------------------------------------------------------------------------
+// Bundles, product variants, licences
+// ---------------------------------------------------------------------------
+
+export type CommerceBundleStatus = 'active' | 'draft' | 'expired';
+
+/** A group of catalog products sold together at a discounted price. */
+export interface CommerceBundle {
+  id: string;
+  name: string;
+  description: string;
+  productIds: string[];
+  currency: CurrencyCode;
+  /** Sum of the members' current prices. */
+  listTotal: number;
+  /** The price the bundle sells for. */
+  bundlePrice: number;
+  /** Absolute saving vs the list total. */
+  savings: number;
+  /** Whole-number saving percent vs the list total. */
+  savingsPercent: number;
+  status: CommerceBundleStatus;
+  featured: boolean;
+  tags: string[];
+}
+
+/** A purchasable configuration of a product. */
+export interface CommerceProductVariant {
+  id: string;
+  productId: string;
+  sku: string;
+  name: string;
+  attributes: Record<string, string>;
+  unitPrice: number;
+  currency: CurrencyCode;
+  stock?: number;
+  status: CommerceProductStatus;
+}
+
+export type CommerceLicenseStatus = 'active' | 'suspended' | 'expired' | 'cancelled';
+
+export type CommerceLicenseeType =
+  | 'institution'
+  | 'publisher'
+  | 'journal'
+  | 'conference'
+  | 'researcher'
+  | 'company';
+
+/** A seat-based entitlement granted for a term, referencing the licensed product. */
+export interface CommerceLicense {
+  id: string;
+  licenseNumber: string;
+  productId: string;
+  productName: string;
+  licenseeId: string;
+  licenseeName: string;
+  licenseeType: CommerceLicenseeType;
+  seats: number;
+  termMonths: number;
+  price: number;
+  currency: CurrencyCode;
+  status: CommerceLicenseStatus;
+  startsAt: string;
+  expiresAt: string;
+  issuedAt: string;
+}
+
+// ---------------------------------------------------------------------------
+// Purchase history
+// ---------------------------------------------------------------------------
+
+/** A single line of an individual's or institution's purchase history. */
+export interface CommercePurchaseRecord {
+  id: string;
+  orderId: string;
+  productId: string;
+  productName: string;
+  productType: CommerceProductType;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+  currency: CurrencyCode;
+  purchasedAt: string;
+  /** Live reference to the source record when the product carries one. */
+  sourceEntity?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Revenue sharing, commerce relationships, lifecycle coverage
+// ---------------------------------------------------------------------------
+
+export type CommerceRevenueParticipantType = 'institution' | 'publisher' | 'researcher' | 'vendor';
+
+/** A participant's share of revenue in a period, after fees, commissions, and refunds. */
+export interface CommerceParticipantEarnings {
+  id: string;
+  participantType: CommerceRevenueParticipantType;
+  participantId: string;
+  participantName: string;
+  currency: CurrencyCode;
+  grossRevenue: number;
+  platformFees: number;
+  commissions: number;
+  refunds: number;
+  netRevenue: number;
+  availableBalance: number;
+  pendingBalance: number;
+  lifetimeRevenue: number;
+  periodStart: string;
+  periodEnd: string;
+}
+
+export type CommerceRelationshipKind =
+  | 'buys'
+  | 'sells'
+  | 'subscribes'
+  | 'settles'
+  | 'disburses'
+  | 'promotes'
+  | 'licenses';
+
+/** A directed reference between an existing module identity and a commerce surface. */
+export interface CommerceRelationship {
+  id: string;
+  kind: CommerceRelationshipKind;
+  fromEntity: string;
+  fromId: string;
+  toEntity: string;
+  toId: string;
+  description: string;
+}
+
+/** Which commerce surfaces serve each research lifecycle stage. */
+export interface CommerceLifecycleCoverage {
+  stage: ResearchLifecycleStageId;
+  stageName: string;
+  revenueStream: string;
+  surfaces: string[];
+  exampleProductIds: string[];
+}
+
+export const COMMERCE_CURRENCIES: readonly CommerceCurrency[] = [
+  { code: 'USD', name: 'US Dollar', symbol: '$', minorUnit: 2, supported: true },
+  { code: 'EUR', name: 'Euro', symbol: '€', minorUnit: 2, supported: true },
+  { code: 'GBP', name: 'British Pound', symbol: '£', minorUnit: 2, supported: true },
+  { code: 'NGN', name: 'Nigerian Naira', symbol: '₦', minorUnit: 2, supported: true },
+  { code: 'ZAR', name: 'South African Rand', symbol: 'R', minorUnit: 2, supported: true },
+  { code: 'GHS', name: 'Ghanaian Cedi', symbol: '₵', minorUnit: 2, supported: true },
+  { code: 'KES', name: 'Kenyan Shilling', symbol: 'KSh', minorUnit: 2, supported: true },
+  { code: 'EGP', name: 'Egyptian Pound', symbol: 'E£', minorUnit: 2, supported: true },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥', minorUnit: 0, supported: true },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'C$', minorUnit: 2, supported: true },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$', minorUnit: 2, supported: true },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF', minorUnit: 2, supported: true },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹', minorUnit: 2, supported: true },
+  { code: 'BRL', name: 'Brazilian Real', symbol: 'R$', minorUnit: 2, supported: true },
+];
+
+export const COMMERCE_PRICING_MODELS: readonly CommercePricingModel[] = [
+  'fixed',
+  'tiered',
+  'usage-based',
+  'credit-based',
+  'subscription',
+  'negotiable',
+  'auction',
+];
+
+export const COMMERCE_RELATIONSHIP_KINDS: readonly CommerceRelationshipKind[] = [
+  'buys',
+  'sells',
+  'subscribes',
+  'settles',
+  'disburses',
+  'promotes',
+  'licenses',
+];
+
+export const COMMERCE_LICENSE_STATUSES: readonly CommerceLicenseStatus[] = [
+  'active',
+  'suspended',
+  'expired',
+  'cancelled',
+];
+
+export const COMMERCE_BUNDLE_STATUSES: readonly CommerceBundleStatus[] = ['active', 'draft', 'expired'];

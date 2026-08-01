@@ -1,24 +1,29 @@
-import { calculateGrandTotal, invoiceSubtotal, taxAmount } from '@/lib/commerce';
+import { calculateGrandTotal, formatCurrency, invoiceSubtotal, taxAmount } from '@/lib/commerce';
 import {
   COMMERCE_PRODUCT_TYPE_LABELS,
   COMMERCE_SUBSCRIBER_TYPE_LABELS,
 } from '@/types/commerce';
 import type {
   CommerceBillingCycle,
+  CommerceBundleStatus,
   CommerceCommissionStatus,
   CommerceCouponStatus,
   CommerceEscrowStatus,
   CommerceInvoiceStatus,
+  CommerceLicenseStatus,
   CommerceOrderStatus,
   CommercePaymentMethod,
   CommercePaymentStatus,
   CommercePrice,
   CommercePriceInterval,
+  CommercePricingModel,
   CommerceProductType,
   CommercePromotionKind,
   CommerceReceiptStatus,
   CommerceRefundReason,
   CommerceRefundStatus,
+  CommerceRelationshipKind,
+  CommerceRevenueParticipantType,
   CommerceSettlementStatus,
   CommerceSubscriberType,
   CommerceSubscriptionStatus,
@@ -27,17 +32,7 @@ import type {
   CommerceWalletTransactionType,
 } from '@/types/commerce';
 
-export function formatCurrency(amount: number, currency: string): string {
-  try {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency,
-      maximumFractionDigits: amount % 1 === 0 ? 0 : 2,
-    }).format(amount);
-  } catch {
-    return `${currency} ${amount}`;
-  }
-}
+export { formatCurrency };
 
 export function formatNumber(value: number): string {
   return new Intl.NumberFormat('en-US').format(value);
@@ -250,8 +245,56 @@ export function formatTransactionKind(kind: CommerceTransactionKind): string {
     'premium-analytics': 'Premium analytics',
     'api-access': 'API access',
     'enterprise-licensing': 'Enterprise licensing',
+    'ai-services': 'AI services',
+    'digital-download': 'Digital download',
     payout: 'Payout',
     disbursement: 'Disbursement',
+  };
+  return labels[kind];
+}
+
+export function formatPricingModel(model: CommercePricingModel): string {
+  return model.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
+export function formatBundleStatus(status: CommerceBundleStatus): string {
+  const labels: Record<CommerceBundleStatus, string> = {
+    active: 'Active',
+    draft: 'Draft',
+    expired: 'Expired',
+  };
+  return labels[status];
+}
+
+export function formatLicenseStatus(status: CommerceLicenseStatus): string {
+  const labels: Record<CommerceLicenseStatus, string> = {
+    active: 'Active',
+    suspended: 'Suspended',
+    expired: 'Expired',
+    cancelled: 'Cancelled',
+  };
+  return labels[status];
+}
+
+export function formatParticipantType(type: CommerceRevenueParticipantType): string {
+  const labels: Record<CommerceRevenueParticipantType, string> = {
+    institution: 'Institution',
+    publisher: 'Publisher',
+    researcher: 'Researcher',
+    vendor: 'Vendor',
+  };
+  return labels[type];
+}
+
+export function formatRelationshipKind(kind: CommerceRelationshipKind): string {
+  const labels: Record<CommerceRelationshipKind, string> = {
+    buys: 'Buys',
+    sells: 'Sells',
+    subscribes: 'Subscribes',
+    settles: 'Settles',
+    disburses: 'Disburses',
+    promotes: 'Promotes',
+    licenses: 'Licenses',
   };
   return labels[kind];
 }
