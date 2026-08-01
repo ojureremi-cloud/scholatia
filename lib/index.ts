@@ -8,3 +8,4 @@ export * from './journals';
 export * from './research';
 export * from './lifecycle';
 export * from './researchers';
+export * from './intelligence';

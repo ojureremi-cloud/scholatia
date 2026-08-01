@@ -23,12 +23,9 @@ import type {
 } from '@/types/intelligence';
 import type { DiscoveryEntityType } from '@/types/discovery';
 import type { ResearcherProfile } from '@/types/researcher';
-import type { JournalProfile } from '@/types/identity';
 import type { ConferenceRecord } from '@/types/conference';
 import type { Institution } from '@/types/institution';
 import type { Dataset } from '@/types/dataset';
-import type { Manuscript } from '@/types/manuscript';
-import type { FundingOpportunity } from '@/types/funding';
 import type { PublicationEntry } from '@/constants/placeholder-profile';
 
 import { RESEARCHERS } from '@/constants/placeholder-researchers';
