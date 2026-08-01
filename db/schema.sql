@@ -134,3 +134,1209 @@ CREATE TABLE password_reset_tokens (
 );
 
 CREATE INDEX idx_password_reset_tokens_user_id ON password_reset_tokens (user_id);
+
+-- ============================================================================
+-- Scholatia — Phase 1.9A Academic Advertising & Sponsored Content Platform
+-- SQL-ready schema for the monetization layer.
+--
+-- Mirrors the TypeScript models in `types/ads.ts`. The Advertising module is
+-- additive: it does NOT own source records. Every advertisement references an
+-- existing record through the `promotable_objects` table (a SAID, a journal id,
+-- a conference id, a DOI, a grant id, a project id). Targeting, budgeting,
+-- forecasting, fraud detection, and analytics are computed by `lib/ads.ts`.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- promotable_objects
+-- ---------------------------------------------------------------------------
+-- A live reference to a promotable record owned by any other module.
+CREATE TABLE promotable_objects (
+  id            UUID PRIMARY KEY,
+  entity_type   TEXT NOT NULL,              -- PromotableEntityType (31 categories)
+  source_id     TEXT NOT NULL,              -- original identity (SAID, journalId, conferenceId, DOI, grant id)
+  title         TEXT NOT NULL,
+  summary       TEXT NOT NULL,
+  url           TEXT NOT NULL,              -- canonical route to the source record
+  keywords      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  discipline    TEXT,
+  research_areas TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  authors       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  organizations TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  country       TEXT,
+  stage_id      TEXT,                       -- ResearchLifecycleStageId
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  date_added    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_promotable_objects_entity_type ON promotable_objects (entity_type);
+CREATE INDEX idx_promotable_objects_source_id   ON promotable_objects (source_id);
+
+-- ---------------------------------------------------------------------------
+-- advertiser_accounts
+-- ---------------------------------------------------------------------------
+CREATE TABLE advertiser_accounts (
+  id                  UUID PRIMARY KEY,
+  name                TEXT NOT NULL,
+  kind                TEXT NOT NULL,        -- scholatia-promote | scholatia-ads
+  account_type        TEXT NOT NULL,        -- individual | organization
+  said                TEXT,                 -- owner SAID for scholatia-promote
+  industry            TEXT,
+  website             TEXT,
+  country             TEXT,
+  city                TEXT,
+  company_description TEXT,
+  size_band           TEXT,
+  representative_name TEXT,
+  representative_email TEXT,
+  billing_email       TEXT NOT NULL,
+  default_method      TEXT NOT NULL,        -- AdPaymentMethod
+  balance             NUMERIC NOT NULL DEFAULT 0,
+  credit_balance      NUMERIC NOT NULL DEFAULT 0,
+  auto_recharge       BOOLEAN NOT NULL DEFAULT FALSE,
+  campaign_manager_id TEXT,
+  advertisement_library TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  verification_status TEXT NOT NULL DEFAULT 'Pending',  -- Verified | Trusted | Pending
+  trust_score         INTEGER NOT NULL DEFAULT 70,
+  joined_at           TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_advertiser_accounts_kind ON advertiser_accounts (kind);
+CREATE INDEX idx_advertiser_accounts_said ON advertiser_accounts (said);
+
+-- ---------------------------------------------------------------------------
+-- advertiser_payments
+-- ---------------------------------------------------------------------------
+CREATE TABLE advertiser_payments (
+  id           UUID PRIMARY KEY,
+  advertiser_id UUID NOT NULL REFERENCES advertiser_accounts (id) ON DELETE CASCADE,
+  amount       NUMERIC NOT NULL,
+  currency     TEXT NOT NULL,
+  method       TEXT NOT NULL,               -- AdPaymentMethod
+  status       TEXT NOT NULL DEFAULT 'pending', -- paid | pending | failed | refunded
+  billed_at    TIMESTAMPTZ NOT NULL,
+  description  TEXT NOT NULL,
+  campaign_id  TEXT,
+  invoice_number TEXT
+);
+
+CREATE INDEX idx_advertiser_payments_advertiser_id ON advertiser_payments (advertiser_id);
+
+-- ---------------------------------------------------------------------------
+-- ad_campaigns
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_campaigns (
+  id            UUID PRIMARY KEY,
+  name          TEXT NOT NULL,
+  advertiser_id UUID NOT NULL REFERENCES advertiser_accounts (id) ON DELETE CASCADE,
+  objective     TEXT NOT NULL,              -- AdObjective
+  status        TEXT NOT NULL DEFAULT 'draft', -- AdCampaignStatus
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ad_campaigns_advertiser_id ON ad_campaigns (advertiser_id);
+CREATE INDEX idx_ad_campaigns_status ON ad_campaigns (status);
+
+-- ---------------------------------------------------------------------------
+-- ad_sets
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_sets (
+  id            UUID PRIMARY KEY,
+  name          TEXT NOT NULL,
+  campaign_id   UUID NOT NULL REFERENCES ad_campaigns (id) ON DELETE CASCADE,
+  audience_id   UUID,                       -- ad_audiences
+  placements    TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- AdPlacement[]
+  pricing_model TEXT NOT NULL,              -- AdPricingModel
+  bid_amount    NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  budget_total  NUMERIC NOT NULL,
+  budget_mode   TEXT NOT NULL DEFAULT 'lifetime', -- AdBudgetMode
+  daily_cap     NUMERIC,
+  budget_spent  NUMERIC NOT NULL DEFAULT 0,
+  start_date    TIMESTAMPTZ NOT NULL,
+  end_date      TIMESTAMPTZ,
+  timezone      TEXT,
+  status        TEXT NOT NULL DEFAULT 'draft', -- AdCampaignStatus
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ad_sets_campaign_id ON ad_sets (campaign_id);
+CREATE INDEX idx_ad_sets_audience_id ON ad_sets (audience_id);
+
+-- ---------------------------------------------------------------------------
+-- ad_creatives
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_creatives (
+  id                UUID PRIMARY KEY,
+  name              TEXT NOT NULL,
+  headline          TEXT NOT NULL,
+  primary_text      TEXT NOT NULL,
+  description       TEXT,
+  call_to_action    TEXT NOT NULL,
+  media_url         TEXT,
+  format            TEXT NOT NULL,          -- AdFormat
+  promoted_object_id UUID REFERENCES promotable_objects (id) ON DELETE SET NULL,
+  label             TEXT NOT NULL,          -- SponsoredLabel
+  status            TEXT NOT NULL DEFAULT 'in-review', -- AdCreativeStatus
+  review_status     TEXT NOT NULL DEFAULT 'pending',   -- pending | approved | rejected
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_ad_creatives_promoted_object_id ON ad_creatives (promoted_object_id);
+
+-- ---------------------------------------------------------------------------
+-- ad_set_creatives (ad sets <-> creatives join)
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_set_creatives (
+  ad_set_id   UUID NOT NULL REFERENCES ad_sets (id) ON DELETE CASCADE,
+  creative_id UUID NOT NULL REFERENCES ad_creatives (id) ON DELETE CASCADE,
+  PRIMARY KEY (ad_set_id, creative_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- ad_audiences
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_audiences (
+  id                       UUID PRIMARY KEY,
+  name                     TEXT NOT NULL,
+  description              TEXT,
+  countries                TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  states                   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  cities                   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  institutions             TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  departments              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  faculties                TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  disciplines              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  research_interests       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  research_keywords        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  academic_ranks           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  student_levels           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  career_stages            TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  languages                TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  sectors                  TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  lifecycle_stages         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  citation_level           TEXT,
+  custom_audience_ids      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  lookalike_audience_ids   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  retargeting_audience_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  estimated_reach          BIGINT NOT NULL DEFAULT 0
+);
+
+-- ---------------------------------------------------------------------------
+-- sponsored_placements
+-- ---------------------------------------------------------------------------
+CREATE TABLE sponsored_placements (
+  id           UUID PRIMARY KEY,
+  placement    TEXT NOT NULL,               -- AdPlacement
+  ad_set_id    UUID REFERENCES ad_sets (id) ON DELETE SET NULL,
+  creative_id  UUID REFERENCES ad_creatives (id) ON DELETE SET NULL,
+  label        TEXT NOT NULL,               -- SponsoredLabel
+  priority     INTEGER NOT NULL DEFAULT 50,
+  status       TEXT NOT NULL DEFAULT 'scheduled', -- live | paused | ended | scheduled
+  start_date   TIMESTAMPTZ NOT NULL,
+  end_date     TIMESTAMPTZ,
+  impressions  BIGINT NOT NULL DEFAULT 0,
+  clicks       BIGINT NOT NULL DEFAULT 0,
+  conversions  BIGINT NOT NULL DEFAULT 0,
+  spend        NUMERIC NOT NULL DEFAULT 0,
+  currency     TEXT NOT NULL
+);
+
+CREATE INDEX idx_sponsored_placements_placement ON sponsored_placements (placement);
+CREATE INDEX idx_sponsored_placements_status ON sponsored_placements (status);
+
+-- ---------------------------------------------------------------------------
+-- ad_review_records
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_review_records (
+  id          UUID PRIMARY KEY,
+  target_id   TEXT NOT NULL,
+  target_kind TEXT NOT NULL,                -- ad | campaign | creative | advertiser
+  checks      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], -- AdReviewCheck[]
+  status      TEXT NOT NULL DEFAULT 'pending',  -- pending | approved | rejected | needs-review
+  decided_by  TEXT,
+  decided_at  TIMESTAMPTZ,
+  notes       TEXT,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- ad_fraud_signals
+-- ---------------------------------------------------------------------------
+CREATE TABLE ad_fraud_signals (
+  id                 UUID PRIMARY KEY,
+  campaign_id        TEXT NOT NULL,
+  advertiser_id      UUID REFERENCES advertiser_accounts (id) ON DELETE SET NULL,
+  type               TEXT NOT NULL,         -- AdFraudType
+  severity           TEXT NOT NULL,         -- low | medium | high | critical
+  status             TEXT NOT NULL DEFAULT 'open', -- open | investigating | resolved | dismissed
+  detected_at        TIMESTAMPTZ NOT NULL,
+  description        TEXT NOT NULL,
+  evidence           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  invalid_clicks     BIGINT NOT NULL DEFAULT 0,
+  invalid_impressions BIGINT NOT NULL DEFAULT 0,
+  invalid_conversions BIGINT NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_ad_fraud_signals_campaign_id ON ad_fraud_signals (campaign_id);
+CREATE INDEX idx_ad_fraud_signals_status ON ad_fraud_signals (status);
+
+-- ============================================================================
+-- Scholatia — Phase 1.9B Academic Marketplace
+-- SQL-ready schema for the commercial/transactional layer.
+--
+-- Mirrors the TypeScript models in `types/marketplace.ts`. The Marketplace
+-- module is additive: it does NOT own source records. Every listing references
+-- an existing record through source_id + source_entity (a project, dataset,
+-- journal, conference, funding opportunity, manuscript, publisher, or DOI),
+-- every listing is searchable through `toDiscoveryItem(s)`, and every listing
+-- is promotable through the `promotable_objects` table from Phase 1.9A.
+-- Pricing, discounting, order transitions, coupon validation, dashboards, and
+-- analytics are computed by `lib/marketplace.ts`.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- marketplace_vendors
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_vendors (
+  id                  UUID PRIMARY KEY,
+  slug                TEXT NOT NULL UNIQUE,
+  name                TEXT NOT NULL,
+  vendor_type         TEXT NOT NULL,         -- MarketplaceVendorType
+  biography           TEXT,
+  researcher_username TEXT,                  -- linked researcher identity
+  position_title      TEXT,
+  institution_id      UUID,
+  country             TEXT,
+  city                TEXT,
+  website             TEXT,
+  categories          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  skills              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  verified            BOOLEAN NOT NULL DEFAULT FALSE,
+  trust_score         INTEGER NOT NULL DEFAULT 70,
+  rating              NUMERIC NOT NULL DEFAULT 0,
+  review_count        INTEGER NOT NULL DEFAULT 0,
+  badges              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status              TEXT NOT NULL DEFAULT 'active',  -- active | suspended | archived
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_vendors_vendor_type ON marketplace_vendors (vendor_type);
+CREATE INDEX idx_marketplace_vendors_researcher_username ON marketplace_vendors (researcher_username);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_storefronts
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_storefronts (
+  id           UUID PRIMARY KEY,
+  vendor_id    UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  name         TEXT NOT NULL,
+  tagline      TEXT,
+  description  TEXT,
+  store_url    TEXT NOT NULL UNIQUE,
+  currency     TEXT NOT NULL,
+  categories   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  featured_listing_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  return_policy TEXT,
+  refund_policy TEXT,
+  delivery_policy TEXT,
+  terms_policy  TEXT,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_storefronts_vendor_id ON marketplace_storefronts (vendor_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_listings
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_listings (
+  id                 UUID PRIMARY KEY,
+  vendor_id          UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  storefront_id      UUID REFERENCES marketplace_storefronts (id) ON DELETE SET NULL,
+  slug               TEXT NOT NULL UNIQUE,
+  title              TEXT NOT NULL,
+  listing_type       TEXT NOT NULL,          -- MarketplaceListingType
+  category           TEXT NOT NULL,          -- MarketplaceCategory
+  subcategory        TEXT,
+  description        TEXT NOT NULL,
+  price              NUMERIC NOT NULL,
+  compare_at_price   NUMERIC,
+  currency           TEXT NOT NULL,          -- CurrencyCode
+  price_interval     TEXT NOT NULL DEFAULT 'one-time', -- MarketplacePriceInterval
+  discount_label     TEXT,
+  discount_kind      TEXT,                   -- percent | fixed
+  discount_value     NUMERIC,
+  status             TEXT NOT NULL DEFAULT 'draft', -- MarketplaceListingStatus
+  stage_ids          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- ResearchLifecycleStageId[]
+  career_stages      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  research_areas     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  keywords           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  target_audiences   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  stock              INTEGER,
+  deliverable        TEXT,
+  rating             NUMERIC NOT NULL DEFAULT 0,
+  review_count       INTEGER NOT NULL DEFAULT 0,
+  favorite_count     INTEGER NOT NULL DEFAULT 0,
+  view_count         BIGINT NOT NULL DEFAULT 0,
+  order_count        INTEGER NOT NULL DEFAULT 0,
+  featured           BOOLEAN NOT NULL DEFAULT FALSE,
+  sponsored          BOOLEAN NOT NULL DEFAULT FALSE,
+  best_seller        BOOLEAN NOT NULL DEFAULT FALSE,
+  verified           BOOLEAN NOT NULL DEFAULT FALSE,
+  badges             TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  tags               TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_entity      TEXT NOT NULL,          -- project | dataset | journal | conference | funding | manuscript | publisher | publication
+  source_id          TEXT NOT NULL,          -- original identity (project id, DOI, journal id, ...)
+  source_url         TEXT NOT NULL,          -- canonical route to the source record
+  url                TEXT NOT NULL,          -- canonical marketplace route
+  available_from     TIMESTAMPTZ,
+  available_to       TIMESTAMPTZ,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_listings_vendor_id ON marketplace_listings (vendor_id);
+CREATE INDEX idx_marketplace_listings_category ON marketplace_listings (category);
+CREATE INDEX idx_marketplace_listings_status ON marketplace_listings (status);
+CREATE INDEX idx_marketplace_listings_source ON marketplace_listings (source_entity, source_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_reviews
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_reviews (
+  id            UUID PRIMARY KEY,
+  listing_id    UUID NOT NULL REFERENCES marketplace_listings (id) ON DELETE CASCADE,
+  reviewer_said TEXT NOT NULL,               -- reviewer's original SAID
+  rating        INTEGER NOT NULL CHECK (rating BETWEEN 1 AND 5),
+  title         TEXT,
+  comment       TEXT,
+  verified_purchase BOOLEAN NOT NULL DEFAULT FALSE,
+  helpful_votes INTEGER NOT NULL DEFAULT 0,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_reviews_listing_id ON marketplace_reviews (listing_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_orders
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_orders (
+  id                UUID PRIMARY KEY,
+  order_number      TEXT NOT NULL UNIQUE,
+  buyer_said        TEXT NOT NULL,
+  vendor_id         UUID NOT NULL REFERENCES marketplace_vendors (id),
+  storefront_id     UUID REFERENCES marketplace_storefronts (id) ON DELETE SET NULL,
+  listing_id        UUID REFERENCES marketplace_listings (id) ON DELETE SET NULL,
+  quantity          INTEGER NOT NULL DEFAULT 1,
+  unit_price        NUMERIC NOT NULL,
+  subtotal          NUMERIC NOT NULL,
+  discount          NUMERIC NOT NULL DEFAULT 0,
+  total             NUMERIC NOT NULL,
+  currency          TEXT NOT NULL,
+  status            TEXT NOT NULL DEFAULT 'pending', -- MarketplaceOrderStatus
+  payment_status    TEXT NOT NULL DEFAULT 'unpaid',  -- MarketplacePaymentStatus
+  delivery_date     TIMESTAMPTZ,
+  notes             TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_orders_buyer_said ON marketplace_orders (buyer_said);
+CREATE INDEX idx_marketplace_orders_vendor_id ON marketplace_orders (vendor_id);
+CREATE INDEX idx_marketplace_orders_status ON marketplace_orders (status);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_invoices
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_invoices (
+  id          UUID PRIMARY KEY,
+  invoice_number TEXT NOT NULL UNIQUE,
+  order_id    UUID REFERENCES marketplace_orders (id) ON DELETE CASCADE,
+  vendor_id   UUID NOT NULL REFERENCES marketplace_vendors (id),
+  buyer_said  TEXT NOT NULL,
+  lines       JSONB NOT NULL DEFAULT '[]'::JSONB, -- MarketplaceInvoiceLine[]
+  subtotal    NUMERIC NOT NULL,
+  tax         NUMERIC NOT NULL DEFAULT 0,
+  tax_rate    NUMERIC NOT NULL DEFAULT 0,
+  fees        NUMERIC NOT NULL DEFAULT 0,
+  total       NUMERIC NOT NULL,
+  currency    TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'pending', -- MarketplaceInvoiceStatus
+  issued_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  due_at      TIMESTAMPTZ,
+  paid_at     TIMESTAMPTZ
+);
+
+CREATE INDEX idx_marketplace_invoices_order_id ON marketplace_invoices (order_id);
+CREATE INDEX idx_marketplace_invoices_vendor_id ON marketplace_invoices (vendor_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_payments
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_payments (
+  id              UUID PRIMARY KEY,
+  order_id        UUID REFERENCES marketplace_orders (id) ON DELETE CASCADE,
+  invoice_id      UUID REFERENCES marketplace_invoices (id) ON DELETE SET NULL,
+  buyer_said      TEXT NOT NULL,
+  amount          NUMERIC NOT NULL,
+  currency        TEXT NOT NULL,
+  method          TEXT NOT NULL,             -- MarketplacePaymentMethod
+  status          TEXT NOT NULL DEFAULT 'pending', -- MarketplacePaymentStatusRecord
+  escrow          BOOLEAN NOT NULL DEFAULT FALSE,
+  reference       TEXT,
+  gateway         TEXT,
+  paid_at         TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_payments_order_id ON marketplace_payments (order_id);
+CREATE INDEX idx_marketplace_payments_buyer_said ON marketplace_payments (buyer_said);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_refunds
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_refunds (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES marketplace_orders (id) ON DELETE CASCADE,
+  listing_id    UUID REFERENCES marketplace_listings (id) ON DELETE SET NULL,
+  buyer_said    TEXT NOT NULL,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  reason        TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'requested', -- MarketplaceRefundStatus
+  decision      TEXT,                         -- approved | rejected | partially-approved
+  decided_by    TEXT,
+  decided_at    TIMESTAMPTZ,
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_refunds_order_id ON marketplace_refunds (order_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_disputes
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_disputes (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES marketplace_orders (id) ON DELETE CASCADE,
+  listing_id    UUID REFERENCES marketplace_listings (id) ON DELETE SET NULL,
+  buyer_said    TEXT NOT NULL,
+  severity      TEXT NOT NULL DEFAULT 'moderate', -- MarketplaceDisputeSeverity
+  status        TEXT NOT NULL DEFAULT 'open',    -- MarketplaceDisputeStatus
+  subject       TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_dispute_messages
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_dispute_messages (
+  id          UUID PRIMARY KEY,
+  dispute_id  UUID NOT NULL REFERENCES marketplace_disputes (id) ON DELETE CASCADE,
+  sender_said TEXT NOT NULL,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_dispute_messages_dispute_id ON marketplace_dispute_messages (dispute_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_coupons
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_coupons (
+  id            UUID PRIMARY KEY,
+  code          TEXT NOT NULL UNIQUE,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  kind          TEXT NOT NULL,               -- MarketplaceCouponType
+  value         NUMERIC NOT NULL,
+  currency      TEXT,
+  applies_to    TEXT NOT NULL,               -- MarketplaceCouponAppliesTo
+  target_id     UUID,                        -- listing / vendor / category
+  min_spend     NUMERIC NOT NULL DEFAULT 0,
+  max_uses      INTEGER NOT NULL DEFAULT 0,
+  uses          INTEGER NOT NULL DEFAULT 0,
+  status        TEXT NOT NULL DEFAULT 'active', -- MarketplaceCouponStatus
+  starts_at     TIMESTAMPTZ NOT NULL,
+  ends_at       TIMESTAMPTZ NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_coupons_applies_to ON marketplace_coupons (applies_to);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_promotions
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_promotions (
+  id              UUID PRIMARY KEY,
+  name            TEXT NOT NULL,
+  kind            TEXT NOT NULL,             -- MarketplacePromotionKind
+  discount_label  TEXT,
+  discount_type   TEXT,                      -- percent | fixed
+  discount_value  NUMERIC NOT NULL,
+  currency        TEXT,
+  listing_ids     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status          TEXT NOT NULL DEFAULT 'scheduled', -- active | upcoming | ended | paused
+  starts_at       TIMESTAMPTZ NOT NULL,
+  ends_at         TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_promotions_kind ON marketplace_promotions (kind);
+CREATE INDEX idx_marketplace_promotions_status ON marketplace_promotions (status);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_bundles
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_bundles (
+  id               UUID PRIMARY KEY,
+  name             TEXT NOT NULL,
+  description      TEXT,
+  vendor_id        UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  list_total       NUMERIC NOT NULL,
+  bundle_price     NUMERIC NOT NULL,
+  savings          NUMERIC NOT NULL,
+  currency         TEXT NOT NULL,
+  listing_ids      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status           TEXT NOT NULL DEFAULT 'active', -- active | archived
+  created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_bundles_vendor_id ON marketplace_bundles (vendor_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_bookings
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_bookings (
+  id            UUID PRIMARY KEY,
+  listing_id    UUID NOT NULL REFERENCES marketplace_listings (id) ON DELETE CASCADE,
+  buyer_said    TEXT NOT NULL,
+  starts_at     TIMESTAMPTZ NOT NULL,
+  ends_at       TIMESTAMPTZ NOT NULL,
+  duration_hours NUMERIC NOT NULL,
+  timezone      TEXT,
+  location      TEXT,
+  online        BOOLEAN NOT NULL DEFAULT TRUE,
+  status        TEXT NOT NULL DEFAULT 'pending', -- MarketplaceBookingStatus
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_bookings_listing_id ON marketplace_bookings (listing_id);
+CREATE INDEX idx_marketplace_bookings_status ON marketplace_bookings (status);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_conversations
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_conversations (
+  id          UUID PRIMARY KEY,
+  order_id    UUID REFERENCES marketplace_orders (id) ON DELETE SET NULL,
+  listing_id  UUID REFERENCES marketplace_listings (id) ON DELETE SET NULL,
+  buyer_said  TEXT NOT NULL,
+  vendor_id   UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_messages
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_messages (
+  id              UUID PRIMARY KEY,
+  conversation_id UUID NOT NULL REFERENCES marketplace_conversations (id) ON DELETE CASCADE,
+  sender_said     TEXT NOT NULL,
+  receiver_said   TEXT NOT NULL,
+  body            TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_messages_conversation_id ON marketplace_messages (conversation_id);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_notifications
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_notifications (
+  id            UUID PRIMARY KEY,
+  type          TEXT NOT NULL,               -- MarketplaceNotificationType
+  recipient_said TEXT NOT NULL,
+  message       TEXT NOT NULL,
+  read          BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_notifications_recipient ON marketplace_notifications (recipient_said);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_wishlists
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_wishlists (
+  id          UUID PRIMARY KEY,
+  name        TEXT NOT NULL,
+  owner_said  TEXT NOT NULL,
+  listing_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_wishlists_owner ON marketplace_wishlists (owner_said);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_recently_viewed
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_recently_viewed (
+  id          UUID PRIMARY KEY,
+  owner_said  TEXT NOT NULL,
+  listing_id  UUID NOT NULL REFERENCES marketplace_listings (id) ON DELETE CASCADE,
+  viewed_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_recently_viewed_owner ON marketplace_recently_viewed (owner_said);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_guest_advertisers
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_guest_advertisers (
+  id             UUID PRIMARY KEY,
+  company_name   TEXT NOT NULL,
+  representative_name  TEXT,
+  representative_email TEXT,
+  industry       TEXT,
+  country        TEXT,
+  website        TEXT,
+  campaign_ids   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- linked ad_campaigns
+  listing_ids    TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- promoted marketplace listings
+  total_spend    NUMERIC NOT NULL DEFAULT 0,
+  conversions    BIGINT NOT NULL DEFAULT 0,
+  roi            NUMERIC NOT NULL DEFAULT 0,
+  impressions    BIGINT NOT NULL DEFAULT 0,
+  clicks         BIGINT NOT NULL DEFAULT 0,
+  verified       BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- marketplace_recommendations
+-- ---------------------------------------------------------------------------
+CREATE TABLE marketplace_recommendations (
+  id            UUID PRIMARY KEY,
+  type          TEXT NOT NULL,               -- MarketplaceRecommendationType
+  score         NUMERIC NOT NULL,
+  confidence    TEXT NOT NULL,               -- IntelligenceConfidence
+  target_audiences TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  reasons       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_entity TEXT,                        -- bridge entity type (DiscoveryEntityType)
+  source_id     TEXT,
+  url           TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_marketplace_recommendations_type ON marketplace_recommendations (type);
+
+-- ===========================================================================
+-- Commerce & Marketplace Engine (Phase 1.9B)
+--
+-- The financial operating system of the Scholatia ecosystem. These tables
+-- store the transactional, wallet, subscription, commission, escrow,
+-- settlement, and revenue-reporting records behind the Commerce module.
+-- They do NOT duplicate marketplace or advertising records — every product,
+-- order, wallet transaction, invoice, receipt, commission, escrow, and
+-- settlement references an existing source record. Payment providers are
+-- modelled as a provider-independent gateway abstraction; no live payment
+-- API or credentials are used.
+-- ===========================================================================
+
+-- ---------------------------------------------------------------------------
+-- commerce_products
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_products (
+  id            UUID PRIMARY KEY,
+  sku           TEXT NOT NULL,
+  name          TEXT NOT NULL,
+  summary       TEXT NOT NULL,
+  description   TEXT,
+  type          TEXT NOT NULL,               -- CommerceProductType
+  category      TEXT NOT NULL,
+  price_amount  NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  price_interval TEXT,                       -- CommercePriceInterval
+  compare_at    NUMERIC,
+  stock         INTEGER,
+  vendor_id     UUID REFERENCES marketplace_vendors (id) ON DELETE SET NULL,
+  source_id     TEXT,
+  source_entity TEXT,
+  status        TEXT NOT NULL DEFAULT 'active', -- CommerceProductStatus
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  featured      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_date  DATE NOT NULL DEFAULT CURRENT_DATE,
+  last_updated  DATE NOT NULL DEFAULT CURRENT_DATE
+);
+
+CREATE INDEX idx_commerce_products_vendor_id ON commerce_products (vendor_id);
+CREATE INDEX idx_commerce_products_type ON commerce_products (type);
+CREATE INDEX idx_commerce_products_status ON commerce_products (status);
+
+-- ---------------------------------------------------------------------------
+-- commerce_carts
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_carts (
+  id            UUID PRIMARY KEY,
+  owner_said    TEXT,
+  coupon_code   TEXT,                        -- resolved through commerce_coupons
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_cart_items
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_cart_items (
+  id            UUID PRIMARY KEY,
+  cart_id       UUID NOT NULL REFERENCES commerce_carts (id) ON DELETE CASCADE,
+  product_id    UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  quantity      INTEGER NOT NULL DEFAULT 1,
+  unit_price    NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  vendor_id     UUID REFERENCES marketplace_vendors (id) ON DELETE SET NULL,
+  promotable_object_id TEXT
+);
+
+CREATE INDEX idx_commerce_cart_items_cart_id ON commerce_cart_items (cart_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_orders
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_orders (
+  id             UUID PRIMARY KEY,
+  order_number   TEXT NOT NULL,
+  buyer_said     TEXT,
+  buyer_name     TEXT NOT NULL,
+  buyer_email    TEXT,
+  status         TEXT NOT NULL DEFAULT 'pending', -- CommerceOrderStatus
+  payment_status TEXT NOT NULL DEFAULT 'unpaid',  -- CommercePaymentStatus
+  payment_method TEXT,                            -- CommercePaymentMethod
+  subtotal       NUMERIC NOT NULL,
+  discount       NUMERIC NOT NULL DEFAULT 0,
+  coupon_code    TEXT,
+  tax            NUMERIC NOT NULL DEFAULT 0,
+  platform_fee   NUMERIC NOT NULL DEFAULT 0,
+  total          NUMERIC NOT NULL,
+  currency       TEXT NOT NULL,
+  invoice_id     TEXT,
+  receipt_id     TEXT,
+  notes          TEXT,
+  placed_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  completed_at   TIMESTAMPTZ
+);
+
+CREATE INDEX idx_commerce_orders_buyer ON commerce_orders (buyer_said);
+CREATE INDEX idx_commerce_orders_status ON commerce_orders (status);
+CREATE INDEX idx_commerce_orders_placed_at ON commerce_orders (placed_at);
+
+-- ---------------------------------------------------------------------------
+-- commerce_order_items
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_order_items (
+  id         UUID PRIMARY KEY,
+  order_id   UUID NOT NULL REFERENCES commerce_orders (id) ON DELETE CASCADE,
+  product_id UUID NOT NULL REFERENCES commerce_products (id) ON DELETE CASCADE,
+  name       TEXT NOT NULL,
+  sku        TEXT NOT NULL,
+  quantity   INTEGER NOT NULL,
+  unit_price NUMERIC NOT NULL,
+  discount   NUMERIC NOT NULL DEFAULT 0,
+  total      NUMERIC NOT NULL
+);
+
+CREATE INDEX idx_commerce_order_items_order_id ON commerce_order_items (order_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_payment_intents
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_payment_intents (
+  id            UUID PRIMARY KEY,
+  order_id      UUID REFERENCES commerce_orders (id) ON DELETE SET NULL,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  method        TEXT NOT NULL,               -- CommercePaymentMethod
+  provider      TEXT NOT NULL,               -- CommercePaymentProvider
+  description   TEXT NOT NULL,
+  metadata      JSONB NOT NULL DEFAULT '{}'::JSONB,
+  status        TEXT NOT NULL DEFAULT 'created', -- created | authorized | captured | failed | cancelled
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_payment_intents_order_id ON commerce_payment_intents (order_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_payments
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_payments (
+  id            UUID PRIMARY KEY,
+  order_id      UUID REFERENCES commerce_orders (id) ON DELETE SET NULL,
+  invoice_id    TEXT,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  method        TEXT NOT NULL,               -- CommercePaymentMethod
+  provider      TEXT NOT NULL,               -- CommercePaymentProvider
+  status        TEXT NOT NULL DEFAULT 'paid', -- CommercePaymentStatus
+  escrowed      BOOLEAN NOT NULL DEFAULT FALSE,
+  reference     TEXT,
+  intent_id     TEXT,
+  date          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_payments_order_id ON commerce_payments (order_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_refunds
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_refunds (
+  id            UUID PRIMARY KEY,
+  refund_number TEXT NOT NULL,
+  order_id      UUID NOT NULL REFERENCES commerce_orders (id) ON DELETE CASCADE,
+  payment_id    TEXT,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  reason        TEXT NOT NULL,               -- CommerceRefundReason
+  note          TEXT,
+  status        TEXT NOT NULL DEFAULT 'requested', -- CommerceRefundStatus
+  requested_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  decided_at    TIMESTAMPTZ,
+  decided_by    TEXT
+);
+
+CREATE INDEX idx_commerce_refunds_order_id ON commerce_refunds (order_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_invoices
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_invoices (
+  id            UUID PRIMARY KEY,
+  invoice_number TEXT NOT NULL,
+  order_id      UUID REFERENCES commerce_orders (id) ON DELETE SET NULL,
+  buyer_said    TEXT,
+  buyer_name    TEXT NOT NULL,
+  subtotal      NUMERIC NOT NULL,
+  discount      NUMERIC NOT NULL DEFAULT 0,
+  tax           NUMERIC NOT NULL DEFAULT 0,
+  fees          NUMERIC NOT NULL DEFAULT 0,
+  total         NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'draft', -- CommerceInvoiceStatus
+  issued_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  due_at        TIMESTAMPTZ,
+  paid_at       TIMESTAMPTZ
+);
+
+CREATE INDEX idx_commerce_invoices_order_id ON commerce_invoices (order_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_receipts
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_receipts (
+  id            UUID PRIMARY KEY,
+  receipt_number TEXT NOT NULL,
+  order_id      UUID REFERENCES commerce_orders (id) ON DELETE SET NULL,
+  invoice_id    TEXT,
+  buyer_said    TEXT,
+  buyer_name    TEXT NOT NULL,
+  subtotal      NUMERIC NOT NULL,
+  discount      NUMERIC NOT NULL DEFAULT 0,
+  tax           NUMERIC NOT NULL DEFAULT 0,
+  total         NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  paid_at       TIMESTAMPTZ NOT NULL,
+  payment_method TEXT,
+  status        TEXT NOT NULL DEFAULT 'issued', -- CommerceReceiptStatus
+  merchant_name TEXT NOT NULL DEFAULT 'Scholatia'
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_coupons
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_coupons (
+  id               UUID PRIMARY KEY,
+  code             TEXT NOT NULL UNIQUE,
+  title            TEXT NOT NULL,
+  description      TEXT,
+  type             TEXT NOT NULL,            -- percent | fixed
+  value            NUMERIC NOT NULL,
+  applies_to       TEXT NOT NULL,            -- CommerceCouponAppliesTo
+  target_id        TEXT,
+  minimum_spend    NUMERIC,
+  maximum_discount NUMERIC,
+  usage_limit      INTEGER,
+  times_used       INTEGER NOT NULL DEFAULT 0,
+  valid_from       DATE NOT NULL,
+  valid_until      DATE NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'active' -- CommerceCouponStatus
+);
+
+CREATE INDEX idx_commerce_coupons_status ON commerce_coupons (status);
+
+-- ---------------------------------------------------------------------------
+-- commerce_promotions
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_promotions (
+  id            UUID PRIMARY KEY,
+  name          TEXT NOT NULL,
+  description   TEXT,
+  kind          TEXT NOT NULL,               -- CommercePromotionKind
+  discount_kind TEXT NOT NULL,               -- percent | fixed
+  discount_value NUMERIC NOT NULL,
+  starts_at     DATE NOT NULL,
+  ends_at       DATE NOT NULL,
+  product_ids   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  budget        NUMERIC,
+  currency      TEXT
+);
+
+CREATE INDEX idx_commerce_promotions_kind ON commerce_promotions (kind);
+
+-- ---------------------------------------------------------------------------
+-- commerce_wallets
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_wallets (
+  id              UUID PRIMARY KEY,
+  owner_said      TEXT NOT NULL,
+  owner_name      TEXT NOT NULL,
+  currency        TEXT NOT NULL,
+  balance         NUMERIC NOT NULL DEFAULT 0,
+  available_balance NUMERIC NOT NULL DEFAULT 0,
+  pending_balance NUMERIC NOT NULL DEFAULT 0,
+  frozen_balance  NUMERIC NOT NULL DEFAULT 0,
+  lifetime_credits NUMERIC NOT NULL DEFAULT 0,
+  lifetime_debits  NUMERIC NOT NULL DEFAULT 0,
+  status          TEXT NOT NULL DEFAULT 'active', -- CommerceWalletStatus
+  created_at      DATE NOT NULL DEFAULT CURRENT_DATE,
+  last_activity_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_wallets_owner ON commerce_wallets (owner_said);
+
+-- ---------------------------------------------------------------------------
+-- commerce_wallet_transactions
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_wallet_transactions (
+  id            UUID PRIMARY KEY,
+  wallet_id     UUID NOT NULL REFERENCES commerce_wallets (id) ON DELETE CASCADE,
+  reference     TEXT NOT NULL,
+  type          TEXT NOT NULL,               -- CommerceWalletTransactionType
+  amount        NUMERIC NOT NULL,
+  direction     TEXT NOT NULL,               -- credit | debit
+  balance_after NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  source_id     TEXT,
+  source_entity TEXT,
+  status        TEXT NOT NULL DEFAULT 'completed', -- CommerceWalletTransactionStatus
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_wallet_transactions_wallet_id ON commerce_wallet_transactions (wallet_id);
+CREATE INDEX idx_commerce_wallet_transactions_created_at ON commerce_wallet_transactions (created_at);
+
+-- ---------------------------------------------------------------------------
+-- commerce_subscription_plans
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_subscription_plans (
+  id              UUID PRIMARY KEY,
+  name            TEXT NOT NULL,
+  description     TEXT,
+  subscriber_type TEXT NOT NULL,             -- CommerceSubscriberType
+  price_amount    NUMERIC NOT NULL,
+  currency        TEXT NOT NULL,
+  price_interval  TEXT,                      -- CommercePriceInterval
+  billing_cycle   TEXT NOT NULL DEFAULT 'monthly', -- monthly | quarterly | annual
+  features        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  featured        BOOLEAN NOT NULL DEFAULT FALSE,
+  status          TEXT NOT NULL DEFAULT 'active' -- active | disabled
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_subscriptions
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_subscriptions (
+  id              UUID PRIMARY KEY,
+  subscriber_said TEXT NOT NULL,
+  subscriber_name TEXT NOT NULL,
+  subscriber_type TEXT NOT NULL,             -- CommerceSubscriberType
+  plan_id         UUID NOT NULL REFERENCES commerce_subscription_plans (id) ON DELETE RESTRICT,
+  price           NUMERIC NOT NULL,
+  currency        TEXT NOT NULL,
+  billing_cycle   TEXT NOT NULL,             -- monthly | quarterly | annual
+  status          TEXT NOT NULL DEFAULT 'active', -- CommerceSubscriptionStatus
+  started_at      DATE NOT NULL,
+  next_billing_at DATE NOT NULL,
+  cancelled_at    DATE,
+  auto_renew      BOOLEAN NOT NULL DEFAULT TRUE,
+  seats           INTEGER
+);
+
+CREATE INDEX idx_commerce_subscriptions_subscriber ON commerce_subscriptions (subscriber_said);
+CREATE INDEX idx_commerce_subscriptions_plan_id ON commerce_subscriptions (plan_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_commissions
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_commissions (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES commerce_orders (id) ON DELETE CASCADE,
+  vendor_id     UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  gross_amount  NUMERIC NOT NULL,
+  rate_percent  NUMERIC NOT NULL,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'pending', -- pending | due | paid
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  paid_at       TIMESTAMPTZ
+);
+
+CREATE INDEX idx_commerce_commissions_vendor_id ON commerce_commissions (vendor_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_escrows
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_escrows (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES commerce_orders (id) ON DELETE CASCADE,
+  buyer_said    TEXT,
+  vendor_id     UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'holding', -- CommerceEscrowStatus
+  held_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  released_at   TIMESTAMPTZ,
+  released_to   TEXT,
+  note          TEXT
+);
+
+CREATE INDEX idx_commerce_escrows_status ON commerce_escrows (status);
+
+-- ---------------------------------------------------------------------------
+-- commerce_vendor_earnings
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_vendor_earnings (
+  id                UUID PRIMARY KEY,
+  vendor_id         UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  vendor_name       TEXT NOT NULL,
+  currency          TEXT NOT NULL,
+  gross_sales       NUMERIC NOT NULL DEFAULT 0,
+  commissions       NUMERIC NOT NULL DEFAULT 0,
+  platform_fees     NUMERIC NOT NULL DEFAULT 0,
+  refunds           NUMERIC NOT NULL DEFAULT 0,
+  adjustments       NUMERIC NOT NULL DEFAULT 0,
+  net_earnings      NUMERIC NOT NULL DEFAULT 0,
+  available_balance NUMERIC NOT NULL DEFAULT 0,
+  pending_balance   NUMERIC NOT NULL DEFAULT 0,
+  lifetime_earnings NUMERIC NOT NULL DEFAULT 0,
+  period_start      DATE NOT NULL,
+  period_end        DATE NOT NULL
+);
+
+CREATE INDEX idx_commerce_vendor_earnings_vendor_id ON commerce_vendor_earnings (vendor_id);
+
+-- ---------------------------------------------------------------------------
+-- commerce_settlements
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_settlements (
+  id            UUID PRIMARY KEY,
+  vendor_id     UUID NOT NULL REFERENCES marketplace_vendors (id) ON DELETE CASCADE,
+  vendor_name   TEXT NOT NULL,
+  reference     TEXT NOT NULL,
+  amount        NUMERIC NOT NULL,
+  currency      TEXT NOT NULL,
+  provider      TEXT NOT NULL,               -- CommercePaymentProvider
+  status        TEXT NOT NULL DEFAULT 'scheduled', -- CommerceSettlementStatus
+  scheduled_at  TIMESTAMPTZ NOT NULL,
+  completed_at  TIMESTAMPTZ
+);
+
+CREATE INDEX idx_commerce_settlements_vendor_id ON commerce_settlements (vendor_id);
+CREATE INDEX idx_commerce_settlements_status ON commerce_settlements (status);
+
+-- ---------------------------------------------------------------------------
+-- commerce_transactions (ledger for revenue reporting)
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_transactions (
+  id                  UUID PRIMARY KEY,
+  reference           TEXT NOT NULL,
+  kind                TEXT NOT NULL,         -- CommerceTransactionKind
+  amount              NUMERIC NOT NULL,
+  currency            TEXT NOT NULL,
+  status              TEXT NOT NULL,         -- CommercePaymentStatus
+  method              TEXT,
+  provider            TEXT,
+  order_id            UUID REFERENCES commerce_orders (id) ON DELETE SET NULL,
+  subscription_id     TEXT,
+  wallet_transaction_id TEXT,
+  description         TEXT NOT NULL,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_commerce_transactions_kind ON commerce_transactions (kind);
+CREATE INDEX idx_commerce_transactions_created_at ON commerce_transactions (created_at);
+
+-- ---------------------------------------------------------------------------
+-- commerce_tax_rates
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_tax_rates (
+  id            UUID PRIMARY KEY,
+  name          TEXT NOT NULL,
+  jurisdiction  TEXT NOT NULL,
+  rate_percent  NUMERIC NOT NULL,
+  applies_to    TEXT NOT NULL DEFAULT 'all'  -- goods | services | digital | all
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_platform_fees
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_platform_fees (
+  id            UUID PRIMARY KEY,
+  scope         TEXT NOT NULL,               -- CommercePlatformFeeScope
+  rate_percent  NUMERIC NOT NULL,
+  minimum       NUMERIC,
+  maximum       NUMERIC,
+  description   TEXT NOT NULL
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_gateway_providers (provider-independent abstraction)
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_gateway_providers (
+  id               UUID PRIMARY KEY,
+  provider         TEXT NOT NULL UNIQUE,     -- CommercePaymentProvider
+  display_name     TEXT NOT NULL,
+  enabled          BOOLEAN NOT NULL DEFAULT FALSE,
+  sandbox          BOOLEAN NOT NULL DEFAULT TRUE,
+  capabilities_currencies TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  capabilities_methods    TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  recurring        BOOLEAN NOT NULL DEFAULT FALSE,
+  supports_escrow   BOOLEAN NOT NULL DEFAULT FALSE,
+  supports_refunds  BOOLEAN NOT NULL DEFAULT FALSE,
+  supports_payouts  BOOLEAN NOT NULL DEFAULT FALSE,
+  verification     BOOLEAN NOT NULL DEFAULT FALSE,
+  supported_methods TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[]
+);
+
+-- ---------------------------------------------------------------------------
+-- commerce_billing_addresses
+-- ---------------------------------------------------------------------------
+CREATE TABLE commerce_billing_addresses (
+  id            UUID PRIMARY KEY,
+  full_name     TEXT NOT NULL,
+  line1         TEXT NOT NULL,
+  line2         TEXT,
+  city          TEXT NOT NULL,
+  state         TEXT,
+  postal_code   TEXT,
+  country       TEXT NOT NULL,
+  phone         TEXT,
+  email         TEXT,
+  is_default    BOOLEAN NOT NULL DEFAULT FALSE
+);
+

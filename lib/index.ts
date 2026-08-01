@@ -9,3 +9,6 @@ export * from './research';
 export * from './lifecycle';
 export * from './researchers';
 export * from './intelligence';
+export * from './ads';
+export * from './marketplace';
+export * from './trust';

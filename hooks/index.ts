@@ -24,3 +24,6 @@ export { default as useJournalSearch } from './useJournalSearch';
 export { default as useSubmission } from './useSubmission';
 export { default as usePeerReview } from './usePeerReview';
 export { default as useEditorialBoard } from './useEditorialBoard';
+export { default as useAds } from './useAds';
+export { default as useMarketplace } from './useMarketplace';
+export { default as useTrust } from './useTrust';

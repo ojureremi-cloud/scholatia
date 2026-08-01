@@ -58,6 +58,7 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 | `/discovery` | Placeholder (created 0.95) | No | Yes | No |
 | `/student-research` | Placeholder (created 0.95) | No | Yes | No |
 | `/institutional-network` | Placeholder (created 0.95) | No | Yes | No |
+| `/trust` | Placeholder (created 0.95) | No | Yes | No |
 
 ## Authentication (created 0.95)
 
