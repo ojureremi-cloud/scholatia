@@ -2088,3 +2088,195 @@ CREATE INDEX idx_notification_events_source ON notification_events (source_entit
 CREATE INDEX idx_notification_events_type ON notification_events (event_type);
 CREATE INDEX idx_notification_events_created ON notification_events (created_at DESC);
 
+
+-- ---------------------------------------------------------------------------
+-- Messaging Platform (Phase 2.2B)
+-- The canonical scholarly messaging layer. Conversations reference canonical
+-- records (researchers, journals, conferences, institutions, publishers,
+-- projects, grants, orders, services, listings) by ID and never duplicate a
+-- record owned by another module. Delivery is decomposed into statuses + read
+-- receipts, and AI-ready insights (summaries, action items, meeting notes,
+-- reply suggestions) are derived from the typed graph with no schema change.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- message_conversations
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_conversations (
+  id                   TEXT PRIMARY KEY,
+  conversation_type    TEXT NOT NULL,              -- ConversationType (direct/group/institution/publisher/conference/journal/project/grant/marketplace/service/support)
+  title                TEXT,
+  description          TEXT,
+  context_entity       TEXT,                       -- ConversationEntityType
+  context_id           TEXT,                       -- canonical record id
+  context_title        TEXT,
+  context_url          TEXT,
+  context_stage_id     TEXT,                       -- ResearchLifecycleStageId
+  status               TEXT NOT NULL DEFAULT 'active', -- ConversationStatus
+  pinned_message_ids   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  last_message_at      TIMESTAMPTZ,
+  last_message_preview TEXT,
+  created_at           TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_message_conversations_type ON message_conversations (conversation_type);
+CREATE INDEX idx_message_conversations_context ON message_conversations (context_entity, context_id);
+CREATE INDEX idx_message_conversations_status ON message_conversations (status);
+CREATE INDEX idx_message_conversations_last ON message_conversations (last_message_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- message_participants
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_participants (
+  conversation_id  TEXT NOT NULL REFERENCES message_conversations (id) ON DELETE CASCADE,
+  user_id          TEXT NOT NULL,                  -- canonical researcher username or module id
+  username         TEXT,
+  display_name     TEXT NOT NULL,
+  avatar           TEXT,
+  role             TEXT NOT NULL,                  -- ConversationRole
+  permissions      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], -- ConversationPermission[]
+  joined_at        TIMESTAMPTZ NOT NULL,
+  muted            BOOLEAN NOT NULL DEFAULT FALSE,
+  archived         BOOLEAN NOT NULL DEFAULT FALSE,
+  PRIMARY KEY (conversation_id, user_id)
+);
+
+CREATE INDEX idx_message_participants_user ON message_participants (user_id);
+
+-- ---------------------------------------------------------------------------
+-- messages
+-- ---------------------------------------------------------------------------
+CREATE TABLE messages (
+  id               TEXT PRIMARY KEY,
+  conversation_id  TEXT NOT NULL REFERENCES message_conversations (id) ON DELETE CASCADE,
+  sender_id        TEXT NOT NULL,
+  sender_name      TEXT NOT NULL,
+  sender_username  TEXT,
+  message_type     TEXT NOT NULL DEFAULT 'text',   -- MessageType
+  body             TEXT NOT NULL,
+  status           TEXT NOT NULL DEFAULT 'sent',   -- MessageStatus
+  reply_to_id      TEXT REFERENCES messages (id) ON DELETE SET NULL,
+  edited_at        TIMESTAMPTZ,
+  edit_count       INTEGER NOT NULL DEFAULT 0,
+  deleted_at       TIMESTAMPTZ,
+  deleted_by       TEXT,
+  pinned_at        TIMESTAMPTZ,
+  pinned_by        TEXT,
+  starred_at       TIMESTAMPTZ,
+  starred_by       TEXT,
+  delivered_at     TIMESTAMPTZ,
+  hashtags         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  metadata         JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at       TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_messages_conversation ON messages (conversation_id, created_at);
+CREATE INDEX idx_messages_sender ON messages (sender_id);
+CREATE INDEX idx_messages_status ON messages (status);
+CREATE INDEX idx_messages_created ON messages (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- message_attachments
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_attachments (
+  id                TEXT PRIMARY KEY,
+  message_id        TEXT NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
+  attachment_type   TEXT NOT NULL,                 -- MessageAttachmentType
+  title             TEXT NOT NULL,
+  entity_id         TEXT,                          -- canonical record reference
+  url               TEXT,
+  file_name         TEXT,
+  file_size         BIGINT,
+  mime_type         TEXT,
+  duration_seconds  INTEGER,
+  position          INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_message_attachments_message ON message_attachments (message_id);
+CREATE INDEX idx_message_attachments_entity ON message_attachments (attachment_type, entity_id);
+
+-- ---------------------------------------------------------------------------
+-- message_reactions
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_reactions (
+  message_id     TEXT NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
+  emoji          TEXT NOT NULL,
+  actor_id       TEXT NOT NULL,
+  actor_name     TEXT NOT NULL,
+  created_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (message_id, emoji, actor_id)
+);
+
+CREATE INDEX idx_message_reactions_actor ON message_reactions (actor_id);
+
+-- ---------------------------------------------------------------------------
+-- message_mentions
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_mentions (
+  message_id    TEXT NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
+  username      TEXT,
+  user_id       TEXT,
+  mention_name  TEXT NOT NULL,
+  entity_type   TEXT,
+  entity_id     TEXT,
+  position      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (message_id, position)
+);
+
+CREATE INDEX idx_message_mentions_user ON message_mentions (user_id, username);
+
+-- ---------------------------------------------------------------------------
+-- message_reads (read receipts)
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_reads (
+  message_id   TEXT NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
+  reader_id    TEXT NOT NULL,
+  reader_name  TEXT NOT NULL,
+  read_at      TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (message_id, reader_id)
+);
+
+CREATE INDEX idx_message_reads_reader ON message_reads (reader_id, read_at);
+
+-- ---------------------------------------------------------------------------
+-- message_pins
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_pins (
+  message_id      TEXT NOT NULL REFERENCES messages (id) ON DELETE CASCADE,
+  conversation_id TEXT NOT NULL REFERENCES message_conversations (id) ON DELETE CASCADE,
+  pinned_by       TEXT NOT NULL,
+  pinned_by_name  TEXT NOT NULL,
+  pinned_at       TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (message_id, pinned_by)
+);
+
+CREATE INDEX idx_message_pins_conversation ON message_pins (conversation_id);
+
+-- ---------------------------------------------------------------------------
+-- message_archives
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_archives (
+  conversation_id TEXT NOT NULL REFERENCES message_conversations (id) ON DELETE CASCADE,
+  archived_by     TEXT NOT NULL,
+  archived_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (conversation_id, archived_by)
+);
+
+-- ---------------------------------------------------------------------------
+-- message_settings
+-- ---------------------------------------------------------------------------
+CREATE TABLE message_settings (
+  conversation_id      TEXT NOT NULL REFERENCES message_conversations (id) ON DELETE CASCADE,
+  typing_indicators    BOOLEAN NOT NULL DEFAULT TRUE,
+  read_receipts        BOOLEAN NOT NULL DEFAULT TRUE,
+  reactions_enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+  attachments_enabled  BOOLEAN NOT NULL DEFAULT TRUE,
+  mentions_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+  search_enabled       BOOLEAN NOT NULL DEFAULT TRUE,
+  pins_enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  stars_enabled        BOOLEAN NOT NULL DEFAULT TRUE,
+  hashtags_enabled     BOOLEAN NOT NULL DEFAULT TRUE,
+  ai_assist_enabled    BOOLEAN NOT NULL DEFAULT TRUE,
+  message_retention_days INTEGER,
+  PRIMARY KEY (conversation_id)
+);

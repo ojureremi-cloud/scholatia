@@ -46,3 +46,4 @@ export {
   targetsNotification,
 } from './notifications';
 export type { NotificationFilter, NotificationSort } from './notifications';
+export * from './messages';

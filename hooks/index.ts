@@ -30,3 +30,4 @@ export { default as useCommerce } from './useCommerce';
 export { default as useServices } from './useServices';
 export { default as useTrust } from './useTrust';
 export { default as useNotifications } from './useNotifications';
+export { default as useMessages } from './useMessages';
