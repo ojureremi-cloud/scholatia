@@ -2280,3 +2280,259 @@ CREATE TABLE message_settings (
   message_retention_days INTEGER,
   PRIMARY KEY (conversation_id)
 );
+
+-- ---------------------------------------------------------------------------
+-- Phase 2.2C: Unified Scholarly Activity Feed
+-- The platform-wide canonical event stream. Every module emits into this
+-- single typed graph by referencing its canonical record — never duplicating
+-- the record itself. Engagement (reactions, comments, threaded replies,
+-- bookmarks, shares/reposts) is recorded in append-only ledgers; derived
+-- counts, trending, recommendations, and feeds are computed by the pure
+-- engine in lib/activity.ts.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- activity_feed
+-- The canonical activity stream. actor_username / actor_name reference the
+-- emitting researcher by canonical username; source_id + source_entity are
+-- the canonical record the activity points back at (researcher, journal,
+-- conference, institution, grant, project, dataset, manuscript, publisher,
+-- order, service, listing, campaign, subscription, ...). visibility drives
+-- the viewer-authorization layer in the engine.
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_feed (
+  id                  TEXT NOT NULL,
+  activity_type       TEXT NOT NULL CHECK (activity_type IN (
+                        'publication','citation','dataset','manuscript',
+                        'conference','journal','publisher','peer-review',
+                        'funding','grant','project','collaborator','award',
+                        'institution','education','profile','orcid',
+                        'verification','trust','advertising',
+                        'marketplace-product','marketplace-purchase',
+                        'research-service','service-order','subscription',
+                        'commerce','recommendation','ai-insight',
+                        'announcement','security'
+                      )),
+  verb                TEXT NOT NULL,
+  actor_username      TEXT NOT NULL,
+  actor_name          TEXT NOT NULL,
+  source_id           TEXT NOT NULL,
+  source_entity       TEXT NOT NULL,
+  stage_id            TEXT,
+  visibility          TEXT NOT NULL CHECK (visibility IN (
+                        'public','institution','collaborators','followers',
+                        'private','restricted'
+                      )),
+  restriction         TEXT,
+  title               TEXT NOT NULL,
+  body                TEXT,
+  views               INTEGER NOT NULL DEFAULT 0,
+  pinned              BOOLEAN NOT NULL DEFAULT FALSE,
+  featured            BOOLEAN NOT NULL DEFAULT FALSE,
+  metadata            JSONB,
+  created_at          TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_feed_created ON activity_feed (created_at DESC);
+CREATE INDEX idx_activity_feed_actor ON activity_feed (actor_username);
+CREATE INDEX idx_activity_feed_source ON activity_feed (source_id, source_entity);
+CREATE INDEX idx_activity_feed_type ON activity_feed (activity_type);
+CREATE INDEX idx_activity_feed_visibility ON activity_feed (visibility);
+
+-- ---------------------------------------------------------------------------
+-- activity_hashtags
+-- Hashtags extracted from activity bodies by the engine (Unicode-aware).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_hashtags (
+  activity_id  TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  tag          TEXT NOT NULL,
+  PRIMARY KEY (activity_id, tag)
+);
+
+-- ---------------------------------------------------------------------------
+-- activity_mentions
+-- @mentions of researchers or canonical entities inside an activity.
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_mentions (
+  id           TEXT NOT NULL,
+  activity_id  TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  username     TEXT,
+  user_id      TEXT,
+  mention_name TEXT NOT NULL,
+  entity_type  TEXT,
+  entity_id    TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_mentions_activity ON activity_mentions (activity_id);
+CREATE INDEX idx_activity_mentions_entity ON activity_mentions (entity_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_attachments
+-- Structured attachments referencing canonical records (publications,
+-- datasets, projects, manuscripts, grants, files, links, media).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_attachments (
+  id          TEXT NOT NULL,
+  activity_id TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  attach_type TEXT NOT NULL CHECK (attach_type IN (
+                'image','document','file','link','video','publication',
+                'dataset','project','manuscript','grant'
+              )),
+  title       TEXT NOT NULL,
+  entity_id   TEXT,
+  entity_type TEXT,
+  url         TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_attachments_activity ON activity_attachments (activity_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_reactions
+-- Per-participant emoji reactions on activities (append-only ledger).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_reactions (
+  id           TEXT NOT NULL,
+  activity_id  TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  emoji        TEXT NOT NULL,
+  actor_id     TEXT NOT NULL,
+  actor_name   TEXT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_reactions_activity ON activity_reactions (activity_id);
+CREATE INDEX idx_activity_reactions_actor ON activity_reactions (actor_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_comments
+-- Top-level comments with threaded replies (replies reference parent).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_comments (
+  id            TEXT NOT NULL,
+  activity_id   TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  author_id     TEXT NOT NULL,
+  author_name   TEXT NOT NULL,
+  body          TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL,
+  edited_at     TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_comments_activity ON activity_comments (activity_id);
+
+CREATE TABLE activity_comment_replies (
+  id         TEXT NOT NULL,
+  comment_id TEXT NOT NULL REFERENCES activity_comments (id) ON DELETE CASCADE,
+  author_id  TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  body       TEXT NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL,
+  edited_at  TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_replies_comment ON activity_comment_replies (comment_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_bookmarks
+-- Per-user bookmarks (append-only ledger).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_bookmarks (
+  id                TEXT NOT NULL,
+  activity_id       TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  bookmarked_by     TEXT NOT NULL,
+  bookmarked_by_name TEXT NOT NULL,
+  bookmarked_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_bookmarks_activity ON activity_bookmarks (activity_id);
+CREATE INDEX idx_activity_bookmarks_user ON activity_bookmarks (bookmarked_by);
+
+-- ---------------------------------------------------------------------------
+-- activity_shares
+-- Shares/reposts across distribution surfaces (scholatia, linkedin,
+-- twitter, facebook, email).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_shares (
+  id            TEXT NOT NULL,
+  activity_id   TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  shared_by     TEXT NOT NULL,
+  shared_by_name TEXT NOT NULL,
+  platform      TEXT NOT NULL CHECK (platform IN (
+                  'scholatia','linkedin','twitter','facebook','email'
+                )),
+  shared_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_shares_activity ON activity_shares (activity_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_pins
+-- Per-user pins (append-only ledger).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_pins (
+  activity_id   TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  pinned_by     TEXT NOT NULL,
+  pinned_by_name TEXT NOT NULL,
+  pinned_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (activity_id, pinned_by)
+);
+
+-- ---------------------------------------------------------------------------
+-- activity_reports
+-- User reports feeding the moderation queue (open/reviewing/resolved/
+-- dismissed lifecycle).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_reports (
+  id                TEXT NOT NULL,
+  activity_id       TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  reported_by       TEXT NOT NULL,
+  reported_by_name  TEXT NOT NULL,
+  reason            TEXT NOT NULL,
+  detail            TEXT,
+  status            TEXT NOT NULL DEFAULT 'open' CHECK (status IN (
+                      'open','reviewing','resolved','dismissed'
+                    )),
+  created_at        TIMESTAMPTZ NOT NULL,
+  resolved_at       TIMESTAMPTZ,
+  resolved_by       TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_reports_activity ON activity_reports (activity_id);
+CREATE INDEX idx_activity_reports_status ON activity_reports (status);
+
+-- ---------------------------------------------------------------------------
+-- activity_moderation
+-- Decisions applied to activities (flagged/hidden/removed/suspended).
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_moderation (
+  id            TEXT NOT NULL,
+  activity_id   TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  action        TEXT NOT NULL CHECK (action IN (
+                  'none','flagged','hidden','removed','suspended'
+                )),
+  moderator     TEXT NOT NULL,
+  moderator_name TEXT NOT NULL,
+  reason        TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_activity_moderation_activity ON activity_moderation (activity_id);
+
+-- ---------------------------------------------------------------------------
+-- activity_featured
+-- The moderation/editorial set of featured activities surfaced on the hub.
+-- ---------------------------------------------------------------------------
+CREATE TABLE activity_featured (
+  activity_id     TEXT NOT NULL REFERENCES activity_feed (id) ON DELETE CASCADE,
+  featured_by     TEXT NOT NULL,
+  featured_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (activity_id)
+);
