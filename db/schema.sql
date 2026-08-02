@@ -1907,3 +1907,184 @@ CREATE TABLE service_promotable_objects (
 
 CREATE INDEX idx_service_promotable_objects_source ON service_promotable_objects (source_id);
 
+-- ---------------------------------------------------------------------------
+-- notifications (Unified Notification Engine, Phase 2.2A)
+-- ---------------------------------------------------------------------------
+CREATE TABLE notifications (
+  id                 TEXT PRIMARY KEY,
+  title              TEXT NOT NULL,
+  body               TEXT NOT NULL,
+  category           TEXT NOT NULL,                -- NotificationCategory
+  priority           TEXT NOT NULL DEFAULT 'normal', -- NotificationPriority
+  status             TEXT NOT NULL DEFAULT 'unread', -- NotificationStatus
+  channels           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_id          TEXT NOT NULL,
+  source_entity      TEXT NOT NULL,                -- NotificationSourceEntityType
+  source_title       TEXT,
+  source_url         TEXT,
+  target_user_id     TEXT,
+  target_username    TEXT,
+  target_said        TEXT,
+  target_name        TEXT,
+  target_entity_type TEXT,                         -- researcher | institution | journal | publisher | group | community
+  actor_id           TEXT,
+  actor_name         TEXT,
+  action_label       TEXT,
+  action_url         TEXT,
+  stage_id           TEXT,                         -- ResearchLifecycleStageId
+  metadata           JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at         TIMESTAMPTZ NOT NULL,
+  read_at            TIMESTAMPTZ,
+  archived_at        TIMESTAMPTZ,
+  expires_at         TIMESTAMPTZ
+);
+
+CREATE INDEX idx_notifications_target ON notifications (target_username, target_user_id, target_said);
+CREATE INDEX idx_notifications_category ON notifications (category);
+CREATE INDEX idx_notifications_priority ON notifications (priority);
+CREATE INDEX idx_notifications_status ON notifications (status);
+CREATE INDEX idx_notifications_source ON notifications (source_entity, source_id);
+CREATE INDEX idx_notifications_stage ON notifications (stage_id);
+CREATE INDEX idx_notifications_created ON notifications (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- notification_preferences
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_preferences (
+  id                 TEXT PRIMARY KEY,
+  target_user_id     TEXT,
+  target_username    TEXT,
+  target_said        TEXT,
+  target_name        TEXT,
+  target_entity_type TEXT,
+  category           TEXT NOT NULL,                -- NotificationCategory
+  channels           JSONB NOT NULL DEFAULT '{}'::JSONB,
+  muted              BOOLEAN NOT NULL DEFAULT FALSE,
+  digest_frequency   TEXT NOT NULL DEFAULT 'realtime', -- NotificationDigestFrequency
+  quiet_hours        JSONB,
+  UNIQUE (target_username, category)
+);
+
+CREATE INDEX idx_notification_preferences_target ON notification_preferences (target_username, target_user_id);
+CREATE INDEX idx_notification_preferences_category ON notification_preferences (category);
+
+-- ---------------------------------------------------------------------------
+-- notification_channels
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_channels (
+  id              TEXT PRIMARY KEY,                -- NotificationChannel
+  label           TEXT NOT NULL,
+  icon            TEXT,
+  enabled         BOOLEAN NOT NULL DEFAULT TRUE,
+  description     TEXT
+);
+
+CREATE INDEX idx_notification_channels_enabled ON notification_channels (enabled);
+
+-- ---------------------------------------------------------------------------
+-- notification_deliveries
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_deliveries (
+  id              TEXT PRIMARY KEY,
+  notification_id TEXT NOT NULL REFERENCES notifications (id) ON DELETE CASCADE,
+  channel         TEXT NOT NULL,                   -- NotificationChannel
+  status          TEXT NOT NULL DEFAULT 'queued',  -- NotificationDeliveryStatus
+  queued_at       TIMESTAMPTZ NOT NULL,
+  sent_at         TIMESTAMPTZ,
+  delivered_at    TIMESTAMPTZ,
+  opened_at       TIMESTAMPTZ,
+  clicked_at      TIMESTAMPTZ,
+  error           TEXT
+);
+
+CREATE INDEX idx_notification_deliveries_notification ON notification_deliveries (notification_id);
+CREATE INDEX idx_notification_deliveries_channel ON notification_deliveries (channel);
+CREATE INDEX idx_notification_deliveries_status ON notification_deliveries (status);
+
+-- ---------------------------------------------------------------------------
+-- notification_templates
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_templates (
+  id               TEXT PRIMARY KEY,
+  name             TEXT NOT NULL,
+  category         TEXT NOT NULL,                  -- NotificationCategory
+  title            TEXT NOT NULL,
+  body             TEXT NOT NULL,
+  default_priority TEXT NOT NULL DEFAULT 'normal', -- NotificationPriority
+  default_channels TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  icon             TEXT,
+  url              TEXT
+);
+
+CREATE INDEX idx_notification_templates_category ON notification_templates (category);
+
+-- ---------------------------------------------------------------------------
+-- notification_digests
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_digests (
+  id               TEXT PRIMARY KEY,
+  target_user_id   TEXT,
+  target_username  TEXT,
+  target_said      TEXT,
+  target_name      TEXT,
+  target_entity_type TEXT,
+  frequency        TEXT NOT NULL,                  -- NotificationDigestFrequency
+  generated_at     TIMESTAMPTZ NOT NULL,
+  sent_at          TIMESTAMPTZ,
+  summary          JSONB NOT NULL DEFAULT '{}'::JSONB
+);
+
+CREATE INDEX idx_notification_digests_target ON notification_digests (target_username, target_user_id);
+CREATE INDEX idx_notification_digests_frequency ON notification_digests (frequency);
+
+-- ---------------------------------------------------------------------------
+-- notification_digest_items
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_digest_items (
+  digest_id       TEXT NOT NULL REFERENCES notification_digests (id) ON DELETE CASCADE,
+  notification_id TEXT NOT NULL REFERENCES notifications (id) ON DELETE CASCADE,
+  position        INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (digest_id, notification_id)
+);
+
+CREATE INDEX idx_notification_digest_items_notification ON notification_digest_items (notification_id);
+
+-- ---------------------------------------------------------------------------
+-- notification_subscriptions
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_subscriptions (
+  id               TEXT PRIMARY KEY,
+  target_user_id   TEXT,
+  target_username  TEXT,
+  target_said      TEXT,
+  target_name      TEXT,
+  target_entity_type TEXT,
+  source_entity    TEXT NOT NULL,                  -- NotificationSourceEntityType
+  source_id        TEXT NOT NULL,
+  events           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], -- NotificationEventType[]
+  channels         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  active           BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at       TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_notification_subscriptions_target ON notification_subscriptions (target_username, target_user_id);
+CREATE INDEX idx_notification_subscriptions_source ON notification_subscriptions (source_entity, source_id);
+
+-- ---------------------------------------------------------------------------
+-- notification_events
+-- ---------------------------------------------------------------------------
+CREATE TABLE notification_events (
+  id               TEXT PRIMARY KEY,
+  event_type       TEXT NOT NULL,                  -- NotificationEventType
+  source_entity    TEXT NOT NULL,                  -- NotificationSourceEntityType
+  source_id        TEXT NOT NULL,
+  actor_id         TEXT,
+  actor_name       TEXT,
+  metadata         JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at       TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_notification_events_source ON notification_events (source_entity, source_id);
+CREATE INDEX idx_notification_events_type ON notification_events (event_type);
+CREATE INDEX idx_notification_events_created ON notification_events (created_at DESC);
+

@@ -16,3 +16,33 @@ export * from './commerce';
 export * from './services';
 export { toDiscoveryItem, toDiscoveryItems } from './marketplace';
 export * from './trust';
+export {
+  archiveNotification,
+  buildEmailDigest,
+  buildNotificationUrl,
+  buildPushPayload,
+  countByStatus,
+  createNotification,
+  digestCutoff,
+  digestNotifications,
+  dismissNotification,
+  filterNotifications,
+  groupByCategory,
+  groupByPriority,
+  markRead,
+  markUnread,
+  notificationAnalytics,
+  notificationId,
+  notificationStatistics,
+  notificationsByChannel,
+  notificationsByLifecycle,
+  notificationsBySource,
+  notificationsBySourceType,
+  notificationsForUser,
+  publishNotification,
+  searchNotifications,
+  shouldDeliver,
+  sortNotifications,
+  targetsNotification,
+} from './notifications';
+export type { NotificationFilter, NotificationSort } from './notifications';
