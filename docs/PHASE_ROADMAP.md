@@ -12,6 +12,7 @@ It complements:
 
 - SCHOLATIA_CORE_PLATFORM_MANIFEST.md
 - AI_DEVELOPMENT_PROTOCOL.md
+- ARCHITECTURE_DECISIONS.md
 
 It is the authoritative reference for all future development phases.
 
