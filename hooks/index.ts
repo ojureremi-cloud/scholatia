@@ -27,4 +27,5 @@ export { default as useEditorialBoard } from './useEditorialBoard';
 export { default as useAds } from './useAds';
 export { default as useMarketplace } from './useMarketplace';
 export { default as useCommerce } from './useCommerce';
+export { default as useServices } from './useServices';
 export { default as useTrust } from './useTrust';

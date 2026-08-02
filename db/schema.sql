@@ -1534,3 +1534,376 @@ CREATE TABLE commerce_financial_reports (
 
 CREATE INDEX idx_commerce_financial_reports_period ON commerce_financial_reports (period);
 
+-- ---------------------------------------------------------------------------
+-- service_providers (Phase 2.1)
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_providers (
+  id                UUID PRIMARY KEY,
+  username          TEXT NOT NULL UNIQUE,
+  name              TEXT NOT NULL,
+  type              TEXT NOT NULL,                -- ServiceProviderType
+  avatar            TEXT,
+  headline          TEXT NOT NULL,
+  tagline           TEXT NOT NULL,
+  description       TEXT NOT NULL,
+  country           TEXT NOT NULL,
+  city              TEXT,
+  institution       TEXT,
+  institution_id    UUID,
+  institution_said  TEXT,
+  position          TEXT,                         -- ResearcherPositionType
+  department        TEXT,
+  researcher_username TEXT,                       -- reused researcher identity
+  researcher_said   TEXT,
+  verified          BOOLEAN NOT NULL DEFAULT FALSE,
+  trust_score       NUMERIC NOT NULL DEFAULT 0,
+  badges            TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- ServiceProviderBadge[]
+  rating_average    NUMERIC NOT NULL DEFAULT 0,
+  rating_count      INTEGER NOT NULL DEFAULT 0,
+  rating_distribution JSONB NOT NULL DEFAULT '{"1":0,"2":0,"3":0,"4":0,"5":0}'::JSONB,
+  response_time     TEXT NOT NULL,
+  completed_jobs    INTEGER NOT NULL DEFAULT 0,
+  completed_jobs_value NUMERIC NOT NULL DEFAULT 0,
+  success_rate      NUMERIC NOT NULL DEFAULT 0,
+  languages         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  specializations   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  availability_status TEXT NOT NULL DEFAULT 'available',  -- ServiceProviderAvailabilityStatus
+  open_slots        INTEGER NOT NULL DEFAULT 0,
+  next_available    TEXT,
+  weekly_hours      NUMERIC NOT NULL DEFAULT 0,
+  member_since      TIMESTAMPTZ NOT NULL,
+  joined_at         TIMESTAMPTZ NOT NULL,
+  followers         INTEGER NOT NULL DEFAULT 0,
+  service_count     INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE INDEX idx_service_providers_type ON service_providers (type);
+CREATE INDEX idx_service_providers_institution ON service_providers (institution_id);
+CREATE INDEX idx_service_providers_availability ON service_providers (availability_status);
+
+-- ---------------------------------------------------------------------------
+-- service_provider_skills
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_provider_skills (
+  id            UUID PRIMARY KEY,
+  provider_id   UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  category      TEXT NOT NULL,
+  level         TEXT NOT NULL DEFAULT 'Intermediate'  -- Beginner | Intermediate | Advanced | Expert
+);
+
+CREATE INDEX idx_service_provider_skills_provider ON service_provider_skills (provider_id);
+
+-- ---------------------------------------------------------------------------
+-- service_provider_certifications
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_provider_certifications (
+  id            UUID PRIMARY KEY,
+  provider_id   UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  name          TEXT NOT NULL,
+  issuer        TEXT NOT NULL,
+  year          TEXT NOT NULL,
+  credential_id TEXT
+);
+
+CREATE INDEX idx_service_provider_certifications_provider ON service_provider_certifications (provider_id);
+
+-- ---------------------------------------------------------------------------
+-- service_provider_portfolio
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_provider_portfolio (
+  id            UUID PRIMARY KEY,
+  provider_id   UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  category      TEXT NOT NULL,                    -- ServiceCategory
+  client        TEXT,
+  year          TEXT,
+  result        TEXT
+);
+
+CREATE INDEX idx_service_provider_portfolio_provider ON service_provider_portfolio (provider_id);
+
+-- ---------------------------------------------------------------------------
+-- service_provider_testimonials
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_provider_testimonials (
+  id                 UUID PRIMARY KEY,
+  provider_id        UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  client_name        TEXT NOT NULL,
+  client_role        TEXT,
+  client_institution TEXT,
+  rating             NUMERIC NOT NULL,
+  comment            TEXT NOT NULL,
+  service_title      TEXT,
+  date               TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_service_provider_testimonials_provider ON service_provider_testimonials (provider_id);
+
+-- ---------------------------------------------------------------------------
+-- services
+-- ---------------------------------------------------------------------------
+CREATE TABLE services (
+  id               UUID PRIMARY KEY,
+  title            TEXT NOT NULL,
+  summary          TEXT NOT NULL,
+  description      TEXT NOT NULL,
+  category         TEXT NOT NULL,                 -- ServiceCategory
+  group            TEXT NOT NULL,                 -- ServiceCategoryGroup
+  type             TEXT NOT NULL,                 -- ServiceType
+  provider_id      UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  provider_name    TEXT NOT NULL,
+  price_amount     NUMERIC NOT NULL,
+  price_currency   TEXT NOT NULL,                 -- CurrencyCode
+  price_interval   TEXT,                          -- ServicePriceInterval
+  price_compare_at NUMERIC,
+  discount_percent NUMERIC,
+  discount_fixed   NUMERIC,
+  rating_average   NUMERIC NOT NULL DEFAULT 0,
+  rating_count     INTEGER NOT NULL DEFAULT 0,
+  rating_distribution JSONB NOT NULL DEFAULT '{"1":0,"2":0,"3":0,"4":0,"5":0}'::JSONB,
+  review_count     INTEGER NOT NULL DEFAULT 0,
+  completed_jobs   INTEGER NOT NULL DEFAULT 0,
+  inquiries        INTEGER NOT NULL DEFAULT 0,
+  favorites        INTEGER NOT NULL DEFAULT 0,
+  views            INTEGER NOT NULL DEFAULT 0,
+  keywords         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  research_areas   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  disciplines      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  career_stages    TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- CareerStage[]
+  stage_ids        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],  -- ResearchLifecycleStageId[]
+  delivery_days    INTEGER NOT NULL,
+  revisions        INTEGER NOT NULL DEFAULT 0,
+  languages        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  target_audience  TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  skills           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  requirements     JSONB NOT NULL DEFAULT '[]'::JSONB,       -- ServiceRequirement[]
+  featured         BOOLEAN NOT NULL DEFAULT FALSE,
+  sponsored        BOOLEAN NOT NULL DEFAULT FALSE,
+  promoted         BOOLEAN NOT NULL DEFAULT FALSE,
+  boost_level      TEXT,                          -- ServiceBoostLevel
+  sponsored_label  TEXT,
+  ad_campaign_id   TEXT,
+  ad_placement     JSONB,
+  ad_metrics       JSONB,                         -- ServiceAdMetrics
+  badges           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status           TEXT NOT NULL DEFAULT 'draft', -- ServiceStatus
+  url              TEXT NOT NULL,
+  date_added       TIMESTAMPTZ NOT NULL,
+  last_updated     TIMESTAMPTZ NOT NULL,
+  source_id        TEXT,
+  source_entity    TEXT                           -- DiscoveryEntityType
+);
+
+CREATE INDEX idx_services_category ON services (category);
+CREATE INDEX idx_services_group ON services (group);
+CREATE INDEX idx_services_provider ON services (provider_id);
+CREATE INDEX idx_services_status ON services (status);
+CREATE INDEX idx_services_featured ON services (featured) WHERE featured = TRUE;
+CREATE INDEX idx_services_source ON services (source_id, source_entity);
+
+-- ---------------------------------------------------------------------------
+-- service_packages
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_packages (
+  id              UUID PRIMARY KEY,
+  service_id      UUID NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL,
+  price_amount    NUMERIC NOT NULL,
+  price_currency  TEXT NOT NULL,
+  price_interval  TEXT,
+  delivery_days   INTEGER NOT NULL,
+  revisions       INTEGER NOT NULL DEFAULT 0,
+  includes        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  popular         BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX idx_service_packages_service ON service_packages (service_id);
+
+-- ---------------------------------------------------------------------------
+-- service_reviews
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_reviews (
+  id               UUID PRIMARY KEY,
+  service_id       UUID NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  provider_id      UUID NOT NULL REFERENCES service_providers (id) ON DELETE CASCADE,
+  reviewer_id      TEXT,
+  reviewer_name    TEXT NOT NULL,
+  reviewer_said    TEXT,
+  rating           NUMERIC NOT NULL,
+  title            TEXT NOT NULL,
+  comment          TEXT NOT NULL,
+  helpful_votes    INTEGER NOT NULL DEFAULT 0,
+  verified_purchase BOOLEAN NOT NULL DEFAULT FALSE,
+  date             TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_service_reviews_service ON service_reviews (service_id);
+CREATE INDEX idx_service_reviews_provider ON service_reviews (provider_id);
+
+-- ---------------------------------------------------------------------------
+-- service_orders
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_orders (
+  id             UUID PRIMARY KEY,
+  order_number   TEXT NOT NULL UNIQUE,
+  service_id     UUID NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  package_id     UUID REFERENCES service_packages (id),
+  provider_id    UUID NOT NULL REFERENCES service_providers (id),
+  provider_name  TEXT NOT NULL,
+  buyer_id       TEXT,
+  buyer_name     TEXT NOT NULL,
+  buyer_said     TEXT,
+  amount         NUMERIC NOT NULL,
+  currency       TEXT NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'pending',  -- ServiceOrderStatus
+  payment_status TEXT NOT NULL DEFAULT 'unpaid',  -- ServicePaymentStatus
+  placed_at      TIMESTAMPTZ NOT NULL,
+  deadline       TIMESTAMPTZ,
+  delivered_at   TIMESTAMPTZ,
+  completed_at   TIMESTAMPTZ,
+  notes          TEXT
+);
+
+CREATE INDEX idx_service_orders_service ON service_orders (service_id);
+CREATE INDEX idx_service_orders_provider ON service_orders (provider_id);
+CREATE INDEX idx_service_orders_status ON service_orders (status);
+
+-- ---------------------------------------------------------------------------
+-- service_order_milestones
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_order_milestones (
+  id             UUID PRIMARY KEY,
+  order_id       UUID NOT NULL REFERENCES service_orders (id) ON DELETE CASCADE,
+  title          TEXT NOT NULL,
+  description    TEXT NOT NULL,
+  status         TEXT NOT NULL DEFAULT 'pending',  -- pending | in-progress | completed
+  due_date       TIMESTAMPTZ NOT NULL,
+  completed_at   TIMESTAMPTZ
+);
+
+CREATE INDEX idx_service_order_milestones_order ON service_order_milestones (order_id);
+
+-- ---------------------------------------------------------------------------
+-- service_disputes
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_disputes (
+  id            UUID PRIMARY KEY,
+  order_id      UUID NOT NULL REFERENCES service_orders (id) ON DELETE CASCADE,
+  service_id    UUID NOT NULL REFERENCES services (id),
+  provider_id   UUID NOT NULL REFERENCES service_providers (id),
+  opened_by     TEXT NOT NULL,
+  subject       TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'open',      -- ServiceDisputeStatus
+  opened_at     TIMESTAMPTZ NOT NULL,
+  resolved_at   TIMESTAMPTZ,
+  resolution    TEXT,
+  refunded      BOOLEAN NOT NULL DEFAULT FALSE,
+  refund_amount NUMERIC,
+  currency      TEXT
+);
+
+CREATE INDEX idx_service_disputes_order ON service_disputes (order_id);
+CREATE INDEX idx_service_disputes_status ON service_disputes (status);
+
+-- ---------------------------------------------------------------------------
+-- service_recommendations
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_recommendations (
+  id            UUID PRIMARY KEY,
+  type          TEXT NOT NULL,                     -- ServiceRecommendationType
+  target_id     TEXT NOT NULL,
+  source_id     TEXT,
+  source_entity TEXT,                              -- DiscoveryEntityType
+  title         TEXT NOT NULL,
+  summary       TEXT NOT NULL,
+  url           TEXT NOT NULL,
+  score         NUMERIC NOT NULL,
+  confidence    TEXT NOT NULL,                     -- IntelligenceConfidence
+  reasons       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  audience      TEXT,
+  date          TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_service_recommendations_type ON service_recommendations (type);
+CREATE INDEX idx_service_recommendations_target ON service_recommendations (target_id);
+
+-- ---------------------------------------------------------------------------
+-- service_bundles
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_bundles (
+  id               UUID PRIMARY KEY,
+  name             TEXT NOT NULL,
+  description      TEXT NOT NULL,
+  list_total       NUMERIC NOT NULL,
+  discount_percent INTEGER NOT NULL,
+  price            NUMERIC NOT NULL,
+  currency         TEXT NOT NULL,
+  featured         BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+-- ---------------------------------------------------------------------------
+-- service_bundle_services
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_bundle_services (
+  bundle_id   UUID NOT NULL REFERENCES service_bundles (id) ON DELETE CASCADE,
+  service_id  UUID NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  position    INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (bundle_id, service_id)
+);
+
+-- ---------------------------------------------------------------------------
+-- service_discovery_items
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_discovery_items (
+  id            TEXT PRIMARY KEY,
+  entity_type   TEXT NOT NULL,                     -- DiscoveryEntityType
+  source_id     TEXT NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  summary       TEXT NOT NULL,
+  description   TEXT,
+  keywords      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  discipline    TEXT,
+  research_areas TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  organizations TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  country       TEXT,
+  continent     TEXT,
+  year          TEXT,
+  status        TEXT,
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  score         NUMERIC NOT NULL DEFAULT 0,
+  url           TEXT NOT NULL,
+  date_added    TIMESTAMPTZ NOT NULL,
+  stage_id      TEXT                               -- ResearchLifecycleStageId
+);
+
+CREATE INDEX idx_service_discovery_items_entity ON service_discovery_items (entity_type);
+CREATE INDEX idx_service_discovery_items_source ON service_discovery_items (source_id);
+
+-- ---------------------------------------------------------------------------
+-- service_promotable_objects (advertising integration)
+-- ---------------------------------------------------------------------------
+CREATE TABLE service_promotable_objects (
+  id              TEXT PRIMARY KEY,
+  entity_type     TEXT NOT NULL,                   -- PromotableEntityType
+  source_id       TEXT NOT NULL REFERENCES services (id) ON DELETE CASCADE,
+  title           TEXT NOT NULL,
+  summary         TEXT NOT NULL,
+  url             TEXT NOT NULL,
+  keywords        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  discipline      TEXT,
+  research_areas  TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  authors         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  organizations   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  country         TEXT,
+  stage_id        TEXT,                            -- ResearchLifecycleStageId
+  tags            TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  date_added      TIMESTAMPTZ NOT NULL
+);
+
+CREATE INDEX idx_service_promotable_objects_source ON service_promotable_objects (source_id);
+

@@ -13,4 +13,6 @@ export * from './ads';
 export * from './marketplace';
 export { discountPercentOf, invoiceTotal } from './commerce';
 export * from './commerce';
+export * from './services';
+export { toDiscoveryItem, toDiscoveryItems } from './marketplace';
 export * from './trust';
