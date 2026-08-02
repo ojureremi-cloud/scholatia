@@ -2536,3 +2536,282 @@ CREATE TABLE activity_featured (
   featured_at     TIMESTAMPTZ NOT NULL,
   PRIMARY KEY (activity_id)
 );
+
+-- ---------------------------------------------------------------------------
+-- Phase 2.2D: Collaboration Workspace Platform
+-- The shared, role-governed surface where research happens together. A
+-- workspace is an aggregate of members (referencing canonical researchers by
+-- username), tasks, documents, meetings, milestones (carrying the canonical
+-- research lifecycle stage ID), discussions, invitations, and an append-only
+-- activity log. A workspace may reference a canonical source record (project,
+-- institution, conference, journal, publisher, grant) through source_id +
+-- source_entity — it never duplicates the record itself. Statistics and
+-- analytics are derived by the pure engine in lib/collaboration.ts.
+-- ---------------------------------------------------------------------------
+
+-- ---------------------------------------------------------------------------
+-- workspace
+-- The workspace aggregate root.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace (
+  id             TEXT NOT NULL,
+  slug           TEXT NOT NULL,
+  name           TEXT NOT NULL,
+  kind           TEXT NOT NULL CHECK (kind IN (
+                   'research-group','research-lab','project-workspace',
+                   'institution-space','conference-space','journal-space',
+                   'community'
+                 )),
+  description    TEXT NOT NULL DEFAULT '',
+  visibility     TEXT NOT NULL CHECK (visibility IN (
+                   'public','institution','members','private'
+                 )),
+  status         TEXT NOT NULL CHECK (status IN (
+                   'active','archived','paused'
+                 )),
+  owner_username TEXT NOT NULL,
+  owner_name     TEXT,
+  source_id      TEXT,
+  source_entity  TEXT CHECK (source_entity IN (
+                   'project','institution','conference','journal',
+                   'publisher','grant'
+                 )),
+  source_title   TEXT,
+  created_at     TIMESTAMPTZ NOT NULL,
+  updated_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE UNIQUE INDEX idx_workspace_slug ON workspace (slug);
+CREATE INDEX idx_workspace_kind ON workspace (kind);
+CREATE INDEX idx_workspace_visibility ON workspace (visibility);
+CREATE INDEX idx_workspace_status ON workspace (status);
+CREATE INDEX idx_workspace_owner ON workspace (owner_username);
+CREATE INDEX idx_workspace_source ON workspace (source_id, source_entity);
+CREATE INDEX idx_workspace_updated ON workspace (updated_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- workspace_tags
+-- Tags labelling a workspace (many-to-many).
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_tags (
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  tag          TEXT NOT NULL,
+  PRIMARY KEY (workspace_id, tag)
+);
+
+CREATE INDEX idx_workspace_tags_tag ON workspace_tags (tag);
+
+-- ---------------------------------------------------------------------------
+-- workspace_members
+-- Researcher memberships referencing canonical researchers by username.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_members (
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  username     TEXT NOT NULL,
+  name         TEXT NOT NULL,
+  avatar       TEXT,
+  role         TEXT NOT NULL CHECK (role IN (
+                'owner','admin','editor','member','viewer'
+              )),
+  status       TEXT NOT NULL CHECK (status IN (
+                'active','invited','pending','removed'
+              )),
+  joined_at    TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (workspace_id, username)
+);
+
+CREATE INDEX idx_workspace_members_username ON workspace_members (username);
+CREATE INDEX idx_workspace_members_role ON workspace_members (role);
+
+-- ---------------------------------------------------------------------------
+-- workspace_tasks
+-- Assignable tasks inside a workspace.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_tasks (
+  id            TEXT NOT NULL,
+  workspace_id  TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  status        TEXT NOT NULL CHECK (status IN (
+                'todo','in-progress','in-review','done'
+              )),
+  priority      TEXT NOT NULL CHECK (priority IN (
+                'low','medium','high','urgent'
+              )),
+  assignee      TEXT,
+  assignee_name TEXT,
+  due_date      TIMESTAMPTZ,
+  created_by    TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL,
+  completed_at  TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_tasks_workspace ON workspace_tasks (workspace_id);
+CREATE INDEX idx_workspace_tasks_status ON workspace_tasks (status);
+CREATE INDEX idx_workspace_tasks_assignee ON workspace_tasks (assignee);
+CREATE INDEX idx_workspace_tasks_priority ON workspace_tasks (priority);
+
+-- ---------------------------------------------------------------------------
+-- workspace_documents
+-- Shared documents hosted by a workspace.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_documents (
+  id           TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  doc_type     TEXT NOT NULL CHECK (doc_type IN (
+                'note','protocol','report','dataset','manuscript',
+                'reference','guideline'
+              )),
+  status       TEXT NOT NULL CHECK (status IN (
+                'draft','in-review','published'
+              )),
+  author       TEXT NOT NULL,
+  author_name  TEXT,
+  updated_at   TIMESTAMPTZ NOT NULL,
+  version      INTEGER NOT NULL DEFAULT 1,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_documents_workspace ON workspace_documents (workspace_id);
+CREATE INDEX idx_workspace_documents_type ON workspace_documents (doc_type);
+CREATE INDEX idx_workspace_documents_status ON workspace_documents (status);
+
+-- ---------------------------------------------------------------------------
+-- workspace_meetings
+-- Scheduled meetings with agendas and attendee lists.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_meetings (
+  id           TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  scheduled_at TIMESTAMPTZ NOT NULL,
+  status       TEXT NOT NULL CHECK (status IN (
+                'scheduled','completed','cancelled'
+              )),
+  agenda       TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_meetings_workspace ON workspace_meetings (workspace_id);
+CREATE INDEX idx_workspace_meetings_status ON workspace_meetings (status);
+CREATE INDEX idx_workspace_meetings_scheduled ON workspace_meetings (scheduled_at);
+
+-- ---------------------------------------------------------------------------
+-- workspace_meeting_attendees
+-- Attendee references (canonical researcher usernames) per meeting.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_meeting_attendees (
+  meeting_id   TEXT NOT NULL REFERENCES workspace_meetings (id) ON DELETE CASCADE,
+  username     TEXT NOT NULL,
+  PRIMARY KEY (meeting_id, username)
+);
+
+-- ---------------------------------------------------------------------------
+-- workspace_milestones
+-- Milestones aligned to the canonical research lifecycle stage IDs.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_milestones (
+  id           TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  description  TEXT,
+  status       TEXT NOT NULL CHECK (status IN (
+                'planned','in-progress','achieved'
+              )),
+  stage_id     TEXT,
+  target_date  TIMESTAMPTZ,
+  achieved_at  TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_milestones_workspace ON workspace_milestones (workspace_id);
+CREATE INDEX idx_workspace_milestones_status ON workspace_milestones (status);
+CREATE INDEX idx_workspace_milestones_stage ON workspace_milestones (stage_id);
+
+-- ---------------------------------------------------------------------------
+-- workspace_discussions
+-- Discussion threads opened inside a workspace.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_discussions (
+  id           TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  body         TEXT,
+  author       TEXT NOT NULL,
+  author_name  TEXT,
+  status       TEXT NOT NULL CHECK (status IN (
+                'open','resolved','closed'
+              )),
+  created_at   TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_discussions_workspace ON workspace_discussions (workspace_id);
+CREATE INDEX idx_workspace_discussions_status ON workspace_discussions (status);
+
+-- ---------------------------------------------------------------------------
+-- workspace_discussion_replies
+-- Threaded replies inside a workspace discussion.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_discussion_replies (
+  id            TEXT NOT NULL,
+  discussion_id TEXT NOT NULL REFERENCES workspace_discussions (id) ON DELETE CASCADE,
+  author        TEXT NOT NULL,
+  author_name   TEXT,
+  body          TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_replies_discussion ON workspace_discussion_replies (discussion_id);
+
+-- ---------------------------------------------------------------------------
+-- workspace_invitations
+-- Invitations for researchers to join a workspace in a given role.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_invitations (
+  id              TEXT NOT NULL,
+  workspace_id    TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  invited_by      TEXT NOT NULL,
+  invited_by_name TEXT,
+  invitee         TEXT NOT NULL,
+  invitee_name    TEXT,
+  role            TEXT NOT NULL CHECK (role IN (
+                   'owner','admin','editor','member','viewer'
+                 )),
+  status          TEXT NOT NULL CHECK (status IN (
+                   'pending','accepted','declined','expired'
+                 )),
+  created_at      TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_invitations_workspace ON workspace_invitations (workspace_id);
+CREATE INDEX idx_workspace_invitations_invitee ON workspace_invitations (invitee);
+CREATE INDEX idx_workspace_invitations_status ON workspace_invitations (status);
+
+-- ---------------------------------------------------------------------------
+-- workspace_log
+-- The append-only workspace activity log.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workspace_log (
+  id           TEXT NOT NULL,
+  workspace_id TEXT NOT NULL REFERENCES workspace (id) ON DELETE CASCADE,
+  event_type   TEXT NOT NULL CHECK (event_type IN (
+                'created','member-added','member-removed','task-created',
+                'task-completed','document-published','milestone-achieved',
+                'meeting-scheduled','discussion-opened','invitation-sent'
+              )),
+  actor        TEXT NOT NULL,
+  actor_name   TEXT,
+  message      TEXT NOT NULL,
+  created_at   TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workspace_log_workspace ON workspace_log (workspace_id);
+CREATE INDEX idx_workspace_log_event ON workspace_log (event_type);
+CREATE INDEX idx_workspace_log_created ON workspace_log (created_at DESC);

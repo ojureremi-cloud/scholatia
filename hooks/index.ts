@@ -32,3 +32,4 @@ export { default as useTrust } from './useTrust';
 export { default as useNotifications } from './useNotifications';
 export { default as useMessages } from './useMessages';
 export { default as useActivity } from './useActivity';
+export { default as useCollaboration } from './useCollaboration';
