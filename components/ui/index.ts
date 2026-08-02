@@ -21,6 +21,7 @@ export { default as Skeleton } from './Skeleton';
 export { default as Spinner } from './Spinner';
 export { default as Switch } from './Switch';
 export { default as Tabs } from './Tabs';
+export { Timeline } from './Timeline';
 export { default as ThemeProvider } from './ThemeProvider';
 export { default as ThemeToggle } from './ThemeToggle';
 export { default as Textarea } from './Textarea';
