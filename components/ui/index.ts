@@ -34,3 +34,5 @@ export { default as InstitutionBadge } from './InstitutionBadge';
 export { default as SectionCard } from './SectionCard';
 export { ProjectStatusBadge } from './ProjectStatusBadge';
 export { ProjectCategoryTag } from './ProjectCategoryTag';
+export { default as Alert } from './Alert';
+export { default as StatisticCard } from './StatisticCard';

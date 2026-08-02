@@ -2815,3 +2815,600 @@ CREATE TABLE workspace_log (
 CREATE INDEX idx_workspace_log_workspace ON workspace_log (workspace_id);
 CREATE INDEX idx_workspace_log_event ON workspace_log (event_type);
 CREATE INDEX idx_workspace_log_created ON workspace_log (created_at DESC);
+
+-- ============================================================================
+-- Scholatia — Phase 2.2E Scholarly Workflow, Task & Review Orchestration
+-- Platform (SWTROP)
+-- SQL-ready schema for the persistence layer of the workflow, task, review,
+-- approval, workbench, and artefact engines.
+--
+-- Mirrors the TypeScript models in `types/workflows.ts`, `types/tasks.ts`, and
+-- `types/reviews.ts`. The pure engines in `lib/workflows.ts`, `lib/tasks.ts`,
+-- and `lib/reviews.ts` implement these aggregates in memory. Workflows are
+-- template-driven (templates are data, never code); reviews are universal and
+-- round-agnostic; approvals carry an append-only decision history; and
+-- everything references source records by id + entity without duplicating them.
+-- These statements are production ready and target PostgreSQL.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- workflow_templates
+-- The data-driven workflow definitions. Templates are never code.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_templates (
+  id             TEXT NOT NULL,
+  name           TEXT NOT NULL,
+  kind           TEXT NOT NULL CHECK (kind IN (
+                   'undergraduate-project','masters-dissertation','phd-thesis',
+                   'journal-submission','conference-submission','book-publishing',
+                   'grant-proposal','ethics-review','consultancy-project',
+                   'institutional-approval','marketplace-delivery','service-delivery'
+                 )),
+  description    TEXT NOT NULL,
+  audience       TEXT NOT NULL,
+  owner_role     TEXT NOT NULL,
+  stages         JSONB NOT NULL DEFAULT '[]'::JSONB, -- WorkflowStageTemplate[]
+  tags           TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_entity  TEXT,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_templates_kind ON workflow_templates (kind);
+
+-- ---------------------------------------------------------------------------
+-- workflow_instances
+-- A live workflow instance assembled from a template.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_instances (
+  id                TEXT NOT NULL,
+  template_id       TEXT NOT NULL REFERENCES workflow_templates (id),
+  title             TEXT NOT NULL,
+  description       TEXT,
+  kind              TEXT NOT NULL CHECK (kind IN (
+                     'undergraduate-project','masters-dissertation','phd-thesis',
+                     'journal-submission','conference-submission','book-publishing',
+                     'grant-proposal','ethics-review','consultancy-project',
+                     'institutional-approval','marketplace-delivery','service-delivery'
+                   )),
+  status            TEXT NOT NULL CHECK (status IN (
+                     'draft','assigned','accepted','in-progress','awaiting-review',
+                     'revision-requested','revision-submitted','approved','rejected',
+                     'paused','on-hold','escalated','delegated','archived',
+                     'cancelled','completed'
+                   )),
+  priority          TEXT NOT NULL CHECK (priority IN ('low','medium','high','urgent')),
+  owner             TEXT NOT NULL,
+  owner_name        TEXT,
+  current_stage_id  TEXT,
+  assignees         TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[], -- WorkflowRole[]
+  tags              TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_id         TEXT,
+  source_entity     TEXT,
+  source_title      TEXT,
+  started_at        TIMESTAMPTZ,
+  completed_at      TIMESTAMPTZ,
+  due_at            TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_instances_status ON workflow_instances (status);
+CREATE INDEX idx_workflow_instances_kind ON workflow_instances (kind);
+CREATE INDEX idx_workflow_instances_owner ON workflow_instances (owner);
+CREATE INDEX idx_workflow_instances_template ON workflow_instances (template_id);
+
+-- ---------------------------------------------------------------------------
+-- workflow_stages
+-- A concrete stage inside a live workflow instance.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_stages (
+  id                TEXT NOT NULL,
+  workflow_id       TEXT NOT NULL REFERENCES workflow_instances (id) ON DELETE CASCADE,
+  template_stage_id TEXT,
+  name              TEXT NOT NULL,
+  kind              TEXT NOT NULL CHECK (kind IN (
+                     'review','approval','task','milestone','submission',
+                     'decision','notification','examination'
+                   )),
+  position          INTEGER NOT NULL,
+  status            TEXT NOT NULL CHECK (status IN (
+                     'not-started','in-progress','awaiting-review',
+                     'revision-requested','revision-submitted','approved',
+                     'rejected','skipped','completed','on-hold'
+                   )),
+  role              TEXT NOT NULL,
+  assignee          TEXT,
+  assignee_name     TEXT,
+  description       TEXT,
+  stage_id          TEXT,
+  started_at        TIMESTAMPTZ,
+  completed_at      TIMESTAMPTZ,
+  due_at            TIMESTAMPTZ,
+  source_id         TEXT,
+  source_entity     TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_stages_workflow ON workflow_stages (workflow_id);
+CREATE INDEX idx_workflow_stages_status ON workflow_stages (status);
+
+-- ---------------------------------------------------------------------------
+-- workflow_transitions
+-- The recorded status transitions of a workflow instance.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_transitions (
+  id          TEXT NOT NULL,
+  workflow_id TEXT NOT NULL REFERENCES workflow_instances (id) ON DELETE CASCADE,
+  from_status TEXT NOT NULL,
+  to_status   TEXT NOT NULL,
+  actor       TEXT NOT NULL,
+  actor_name  TEXT,
+  comment     TEXT,
+  at          TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_transitions_workflow ON workflow_transitions (workflow_id);
+
+-- ---------------------------------------------------------------------------
+-- workflow_logs
+-- The append-only workflow activity log.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_logs (
+  id          TEXT NOT NULL,
+  workflow_id TEXT NOT NULL REFERENCES workflow_instances (id) ON DELETE CASCADE,
+  event_type  TEXT NOT NULL CHECK (event_type IN (
+              'created','assigned','accepted','started','status-changed',
+              'stage-started','stage-completed','stage-skipped',
+              'revision-requested','revision-submitted','approved','rejected',
+              'published','escalated','delegated','paused','resumed',
+              'deadline-set','deadline-extended','deadline-overdue',
+              'milestone-reached','comment-added','notification-sent',
+              'archived','cancelled','completed'
+            )),
+  actor       TEXT NOT NULL,
+  actor_name  TEXT,
+  message     TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_logs_workflow ON workflow_logs (workflow_id);
+CREATE INDEX idx_workflow_logs_event ON workflow_logs (event_type);
+CREATE INDEX idx_workflow_logs_created ON workflow_logs (created_at DESC);
+
+-- ---------------------------------------------------------------------------
+-- workflow_deadlines
+-- A deadline attached to a workflow, with extension and reminder state.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_deadlines (
+  id                   TEXT NOT NULL,
+  workflow_id          TEXT NOT NULL REFERENCES workflow_instances (id) ON DELETE CASCADE,
+  title                TEXT NOT NULL,
+  due_at               TIMESTAMPTZ NOT NULL,
+  status               TEXT NOT NULL CHECK (status IN (
+                        'upcoming','due-soon','overdue','met','extended'
+                      )),
+  extended_to          TIMESTAMPTZ,
+  grace_period_days    INTEGER,
+  recurring            BOOLEAN NOT NULL DEFAULT FALSE,
+  reminder_schedule_days INTEGER[],
+  source_id            TEXT,
+  source_entity        TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_deadlines_workflow ON workflow_deadlines (workflow_id);
+CREATE INDEX idx_workflow_deadlines_status ON workflow_deadlines (status);
+
+-- ---------------------------------------------------------------------------
+-- workflow_milestones
+-- A milestone inside a workflow, aligned to a canonical lifecycle stage.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workflow_milestones (
+  id           TEXT NOT NULL,
+  workflow_id  TEXT NOT NULL REFERENCES workflow_instances (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  description  TEXT,
+  status       TEXT NOT NULL CHECK (status IN ('planned','in-progress','achieved','missed')),
+  stage_id     TEXT NOT NULL,
+  target_date  TIMESTAMPTZ,
+  achieved_at  TIMESTAMPTZ,
+  source_id    TEXT,
+  source_entity TEXT,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workflow_milestones_workflow ON workflow_milestones (workflow_id);
+CREATE INDEX idx_workflow_milestones_stage ON workflow_milestones (stage_id);
+
+-- ---------------------------------------------------------------------------
+-- tasks
+-- A generic assignable task aggregate root (SWTROP task engine).
+-- ---------------------------------------------------------------------------
+CREATE TABLE tasks (
+  id            TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  status        TEXT NOT NULL CHECK (status IN (
+                 'todo','in-progress','blocked','in-review','done'
+               )),
+  priority      TEXT NOT NULL CHECK (priority IN ('low','medium','high','urgent')),
+  assignee      TEXT,
+  assignee_name TEXT,
+  workflow_id   TEXT REFERENCES workflow_instances (id) ON DELETE SET NULL,
+  source_id     TEXT,
+  source_entity TEXT,
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  due_date      TIMESTAMPTZ,
+  created_by    TEXT NOT NULL,
+  created_by_name TEXT,
+  progress      INTEGER NOT NULL DEFAULT 0 CHECK (progress BETWEEN 0 AND 100),
+  started_at    TIMESTAMPTZ,
+  completed_at  TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_tasks_status ON tasks (status);
+CREATE INDEX idx_tasks_priority ON tasks (priority);
+CREATE INDEX idx_tasks_assignee ON tasks (assignee);
+CREATE INDEX idx_tasks_workflow ON tasks (workflow_id);
+
+-- ---------------------------------------------------------------------------
+-- task_assignments
+-- An assignment of a task to a researcher.
+-- ---------------------------------------------------------------------------
+CREATE TABLE task_assignments (
+  id           TEXT NOT NULL,
+  task_id      TEXT NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
+  assignee     TEXT NOT NULL,
+  assignee_name TEXT,
+  role         TEXT,
+  status       TEXT NOT NULL CHECK (status IN (
+               'assigned','accepted','in-progress','completed','rejected','withdrawn'
+             )),
+  assigned_by  TEXT NOT NULL,
+  assigned_by_name TEXT,
+  assigned_at  TIMESTAMPTZ NOT NULL,
+  accepted_at  TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_task_assignments_task ON task_assignments (task_id);
+CREATE INDEX idx_task_assignments_assignee ON task_assignments (assignee);
+
+-- ---------------------------------------------------------------------------
+-- task_comments
+-- A comment attached to a task.
+-- ---------------------------------------------------------------------------
+CREATE TABLE task_comments (
+  id          TEXT NOT NULL,
+  task_id     TEXT NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
+  author      TEXT NOT NULL,
+  author_name TEXT,
+  body        TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_task_comments_task ON task_comments (task_id);
+
+-- ---------------------------------------------------------------------------
+-- task_history
+-- The append-only task audit trail.
+-- ---------------------------------------------------------------------------
+CREATE TABLE task_history (
+  id          TEXT NOT NULL,
+  task_id     TEXT NOT NULL REFERENCES tasks (id) ON DELETE CASCADE,
+  event_type  TEXT NOT NULL CHECK (event_type IN (
+              'created','assigned','unassigned','accepted','status-changed',
+              'priority-changed','comment-added','blocked','unblocked',
+              'completed','reopened'
+            )),
+  actor       TEXT NOT NULL,
+  actor_name  TEXT,
+  message     TEXT NOT NULL,
+  from_status TEXT,
+  to_status   TEXT,
+  created_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_task_history_task ON task_history (task_id);
+
+-- ---------------------------------------------------------------------------
+-- review_cycles
+-- A universal, round-agnostic review cycle. Rounds are unbounded.
+-- ---------------------------------------------------------------------------
+CREATE TABLE review_cycles (
+  id            TEXT NOT NULL,
+  workflow_id   TEXT REFERENCES workflow_instances (id) ON DELETE SET NULL,
+  artefact_id   TEXT,
+  source_id     TEXT,
+  source_entity TEXT,
+  round         INTEGER NOT NULL DEFAULT 1,
+  status        TEXT NOT NULL CHECK (status IN ('open','in-progress','completed','cancelled')),
+  requested_by  TEXT,
+  requested_by_name TEXT,
+  opened_at     TIMESTAMPTZ NOT NULL,
+  closed_at     TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_review_cycles_workflow ON review_cycles (workflow_id);
+CREATE INDEX idx_review_cycles_status ON review_cycles (status);
+
+-- ---------------------------------------------------------------------------
+-- reviews
+-- A single review inside a review cycle.
+-- ---------------------------------------------------------------------------
+CREATE TABLE reviews (
+  id             TEXT NOT NULL,
+  cycle_id       TEXT NOT NULL REFERENCES review_cycles (id) ON DELETE CASCADE,
+  workflow_id    TEXT,
+  artefact_id    TEXT,
+  kind           TEXT NOT NULL CHECK (kind IN (
+                  'peer-review','editorial','supervisory','examination',
+                  'ethics','grant','approval','voice','institutional'
+                )),
+  status         TEXT NOT NULL CHECK (status IN (
+                  'draft','invited','accepted','in-progress','submitted',
+                  'completed','cancelled'
+                )),
+  round          INTEGER NOT NULL DEFAULT 1,
+  title          TEXT,
+  description    TEXT,
+  reviewer       TEXT NOT NULL,
+  reviewer_name  TEXT,
+  decision       TEXT CHECK (decision IN (
+                  'approve','reject','minor-revision','major-revision',
+                  'escalate','delegate','return','withdraw','reopen','close'
+                )),
+  source_id      TEXT,
+  source_entity  TEXT,
+  due_at         TIMESTAMPTZ,
+  submitted_at   TIMESTAMPTZ,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_reviews_cycle ON reviews (cycle_id);
+CREATE INDEX idx_reviews_status ON reviews (status);
+CREATE INDEX idx_reviews_reviewer ON reviews (reviewer);
+
+-- ---------------------------------------------------------------------------
+-- review_comments
+-- A comment inside a review — typed, inline, or a reply.
+-- ---------------------------------------------------------------------------
+CREATE TABLE review_comments (
+  id                 TEXT NOT NULL,
+  review_id          TEXT NOT NULL REFERENCES reviews (id) ON DELETE CASCADE,
+  author             TEXT NOT NULL,
+  author_name        TEXT,
+  comment_type       TEXT NOT NULL CHECK (comment_type IN (
+                      'general','summary','inline','reply','voice'
+                    )),
+  body               TEXT,
+  voice_transcript   TEXT,
+  voice_audio_url    TEXT,
+  inline_anchor      TEXT,
+  parent_comment_id  TEXT REFERENCES review_comments (id) ON DELETE CASCADE,
+  created_at         TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_review_comments_review ON review_comments (review_id);
+CREATE INDEX idx_review_comments_parent ON review_comments (parent_comment_id);
+
+-- ---------------------------------------------------------------------------
+-- review_voice_notes
+-- A recorded voice note, optionally retained as original audio.
+-- ---------------------------------------------------------------------------
+CREATE TABLE review_voice_notes (
+  id               TEXT NOT NULL,
+  review_id        TEXT NOT NULL REFERENCES reviews (id) ON DELETE CASCADE,
+  author           TEXT NOT NULL,
+  author_name      TEXT,
+  transcript       TEXT NOT NULL,
+  audio_url        TEXT,
+  duration_seconds INTEGER,
+  status           TEXT NOT NULL CHECK (status IN ('recorded','transcribed','failed')),
+  source_id        TEXT,
+  source_entity    TEXT,
+  created_at       TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_review_voice_notes_review ON review_voice_notes (review_id);
+
+-- ---------------------------------------------------------------------------
+-- approvals
+-- A decision request on a workflow, artefact, or source record.
+-- ---------------------------------------------------------------------------
+CREATE TABLE approvals (
+  id              TEXT NOT NULL,
+  workflow_id     TEXT REFERENCES workflow_instances (id) ON DELETE SET NULL,
+  source_id       TEXT,
+  source_entity   TEXT,
+  kind            TEXT NOT NULL CHECK (kind IN (
+                  'topic-approval','proposal-approval','chapter-approval',
+                  'section-approval','milestone-approval','final-approval',
+                  'ethics-approval','grant-approval','submission-approval',
+                  'publication-approval','institutional-approval','general-approval'
+                )),
+  status          TEXT NOT NULL CHECK (status IN (
+                  'pending','approved','rejected','minor-revision',
+                  'major-revision','escalated','delegated','returned',
+                  'withdrawn','reopened','closed'
+                )),
+  title           TEXT NOT NULL,
+  description     TEXT,
+  approver        TEXT NOT NULL,
+  approver_name   TEXT,
+  approver_role   TEXT,
+  requested_by    TEXT,
+  requested_by_name TEXT,
+  comment         TEXT,
+  decided_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_approvals_status ON approvals (status);
+CREATE INDEX idx_approvals_approver ON approvals (approver);
+CREATE INDEX idx_approvals_workflow ON approvals (workflow_id);
+
+-- ---------------------------------------------------------------------------
+-- approval_history
+-- The append-only approval decision history.
+-- ---------------------------------------------------------------------------
+CREATE TABLE approval_history (
+  id           TEXT NOT NULL,
+  approval_id  TEXT NOT NULL REFERENCES approvals (id) ON DELETE CASCADE,
+  action       TEXT NOT NULL CHECK (action IN (
+               'approve','reject','minor-revision','major-revision',
+               'escalate','delegate','return','withdraw','reopen','close'
+             )),
+  actor        TEXT NOT NULL,
+  actor_name   TEXT,
+  comment      TEXT,
+  from_status  TEXT,
+  to_status    TEXT NOT NULL,
+  at           TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_approval_history_approval ON approval_history (approval_id);
+
+-- ---------------------------------------------------------------------------
+-- workbench_items
+-- A private workbench item. Nothing enters a workflow until promoted.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workbench_items (
+  id            TEXT NOT NULL,
+  workbench_id  TEXT NOT NULL,
+  item_type     TEXT NOT NULL CHECK (item_type IN (
+                'note','brainstorm','outline','reference','pdf','dataset',
+                'clipping','screenshot','calculation','voice-note','ai-note',
+                'draft-section','draft-chapter','temp-file'
+              )),
+  title         TEXT NOT NULL,
+  body          TEXT,
+  content       TEXT,
+  status        TEXT NOT NULL CHECK (status IN ('draft','active','archived','promoted')),
+  tags          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_id     TEXT,
+  source_entity TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  promoted_to   TEXT,
+  promoted_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workbench_items_workbench ON workbench_items (workbench_id);
+CREATE INDEX idx_workbench_items_status ON workbench_items (status);
+
+-- ---------------------------------------------------------------------------
+-- workbench_versions
+-- An immutable version snapshot of a workbench item.
+-- ---------------------------------------------------------------------------
+CREATE TABLE workbench_versions (
+  id         TEXT NOT NULL,
+  item_id    TEXT NOT NULL REFERENCES workbench_items (id) ON DELETE CASCADE,
+  version    INTEGER NOT NULL,
+  title      TEXT NOT NULL,
+  body       TEXT,
+  content    TEXT,
+  note       TEXT,
+  created_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_workbench_versions_item ON workbench_versions (item_id);
+
+-- ---------------------------------------------------------------------------
+-- scholarly_artefacts
+-- A canonical scholarly artefact owned by a researcher.
+-- ---------------------------------------------------------------------------
+CREATE TABLE scholarly_artefacts (
+  id            TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  artefact_type TEXT NOT NULL CHECK (artefact_type IN (
+                'manuscript','thesis','dissertation','proposal','report',
+                'grant','dataset','book','chapter','conference-paper','project'
+              )),
+  status        TEXT NOT NULL CHECK (status IN (
+                'draft','in-progress','under-review','approved','published','archived'
+              )),
+  owner         TEXT NOT NULL,
+  owner_name    TEXT,
+  source_id     TEXT,
+  source_entity TEXT,
+  source_title  TEXT,
+  word_count    INTEGER,
+  promoted_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_scholarly_artefacts_owner ON scholarly_artefacts (owner);
+CREATE INDEX idx_scholarly_artefacts_type ON scholarly_artefacts (artefact_type);
+CREATE INDEX idx_scholarly_artefacts_status ON scholarly_artefacts (status);
+
+-- ---------------------------------------------------------------------------
+-- artefact_chapters
+-- A chapter of an artefact, composed of sections.
+-- ---------------------------------------------------------------------------
+CREATE TABLE artefact_chapters (
+  id          TEXT NOT NULL,
+  artefact_id TEXT NOT NULL REFERENCES scholarly_artefacts (id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  position    INTEGER NOT NULL,
+  status      TEXT NOT NULL CHECK (status IN (
+              'draft','in-progress','awaiting-review','revision-requested',
+              'revision-submitted','approved'
+            )),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_artefact_chapters_artefact ON artefact_chapters (artefact_id);
+
+-- ---------------------------------------------------------------------------
+-- artefact_sections
+-- A section of an artefact, reviewable independently.
+-- ---------------------------------------------------------------------------
+CREATE TABLE artefact_sections (
+  id            TEXT NOT NULL,
+  artefact_id   TEXT NOT NULL REFERENCES scholarly_artefacts (id) ON DELETE CASCADE,
+  chapter_id    TEXT REFERENCES artefact_chapters (id) ON DELETE SET NULL,
+  title         TEXT NOT NULL,
+  position      INTEGER NOT NULL,
+  status        TEXT NOT NULL CHECK (status IN (
+                'draft','in-progress','awaiting-review','revision-requested',
+                'revision-submitted','approved'
+              )),
+  content       TEXT,
+  word_count    INTEGER,
+  reviewer      TEXT,
+  reviewer_name TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_artefact_sections_artefact ON artefact_sections (artefact_id);
+CREATE INDEX idx_artefact_sections_chapter ON artefact_sections (chapter_id);
+CREATE INDEX idx_artefact_sections_status ON artefact_sections (status);
