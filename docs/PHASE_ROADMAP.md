@@ -74,16 +74,18 @@ Completed
 
 - Commerce
 - Services
-
-In Progress
-
 - Notifications
 - Messaging
 - Activity Feed
+- Collaboration Workspaces
+- Workflow, Task & Review Orchestration (SWTROP)
+
+In Progress
+
+- Groups
 
 Planned
 
-- Groups
 - Communities
 - Learning
 - Marketplace Expansion

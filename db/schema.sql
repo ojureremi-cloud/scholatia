@@ -3412,3 +3412,248 @@ CREATE TABLE artefact_sections (
 CREATE INDEX idx_artefact_sections_artefact ON artefact_sections (artefact_id);
 CREATE INDEX idx_artefact_sections_chapter ON artefact_sections (chapter_id);
 CREATE INDEX idx_artefact_sections_status ON artefact_sections (status);
+
+-- ============================================================================
+-- Academic Groups Foundation (Phase 2.2G Part 1)
+-- Mirrors the TypeScript models in `types/groups.ts`. Derived counts
+-- (member_count, publication_count, event_count, resource_count) are computed
+-- by the pure engine in `lib/groups.ts`, never hand-maintained. Members,
+-- owners, and contributors reference canonical researchers by username; the
+-- owning institution references canonical institutions by institution_id;
+-- publications and projects reference canonical source records through
+-- source_id + source_entity. Verification status reuses the canonical
+-- InstitutionVerificationStatus vocabulary from the Identity platform.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- groups
+-- ---------------------------------------------------------------------------
+CREATE TABLE groups (
+  id                  TEXT NOT NULL,
+  slug                TEXT NOT NULL,
+  name                TEXT NOT NULL,
+  description         TEXT NOT NULL,
+  category            TEXT NOT NULL CHECK (category IN (
+                      'research-group','department','faculty','institution',
+                      'conference-working-group','journal-editorial','grant-team',
+                      'laboratory','project-team','interest-group','professional-network'
+                    )),
+  visibility          TEXT NOT NULL CHECK (visibility IN (
+                      'public','private','invitation-only','institution-only','department-only'
+                    )),
+  owner               TEXT NOT NULL,
+  owner_name          TEXT,
+  institution         TEXT NOT NULL,
+  institution_id      TEXT,
+  department          TEXT NOT NULL,
+  country             TEXT NOT NULL,
+  discipline          TEXT NOT NULL,
+  research_areas      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  keywords            TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  profile_image       TEXT,
+  cover_image         TEXT,
+  website             TEXT,
+  email               TEXT,
+  social_links        JSONB,
+  verification_status TEXT NOT NULL DEFAULT 'Pending' CHECK (verification_status IN (
+                      'Pending','Email Verified','Domain Verified','Document Verified',
+                      'Government Recognised','Accredited','Verified','Trusted'
+                    )),
+  member_count        INTEGER NOT NULL DEFAULT 0,
+  publication_count   INTEGER NOT NULL DEFAULT 0,
+  event_count         INTEGER NOT NULL DEFAULT 0,
+  resource_count      INTEGER NOT NULL DEFAULT 0,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (slug)
+);
+
+CREATE INDEX idx_groups_category ON groups (category);
+CREATE INDEX idx_groups_visibility ON groups (visibility);
+CREATE INDEX idx_groups_owner ON groups (owner);
+CREATE INDEX idx_groups_institution ON groups (institution_id);
+CREATE INDEX idx_groups_country ON groups (country);
+CREATE INDEX idx_groups_discipline ON groups (discipline);
+CREATE INDEX idx_groups_verification ON groups (verification_status);
+
+-- ---------------------------------------------------------------------------
+-- group_members
+-- A researcher seat inside a group, referenced by canonical username.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_members (
+  id         TEXT NOT NULL,
+  group_id   TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  username   TEXT NOT NULL,
+  name       TEXT NOT NULL,
+  avatar     TEXT,
+  role       TEXT NOT NULL CHECK (role IN (
+             'owner','administrator','moderator','member','guest','visitor'
+           )),
+  status     TEXT NOT NULL CHECK (status IN ('active','invited','pending','removed')),
+  joined_at  TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id),
+  UNIQUE (group_id, username)
+);
+
+CREATE INDEX idx_group_members_group ON group_members (group_id);
+CREATE INDEX idx_group_members_username ON group_members (username);
+CREATE INDEX idx_group_members_role ON group_members (role);
+
+-- ---------------------------------------------------------------------------
+-- group_publications
+-- A publication a group has produced or contributed to.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_publications (
+  id            TEXT NOT NULL,
+  group_id      TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  type          TEXT NOT NULL CHECK (type IN (
+                'article','preprint','dataset','report','chapter','proceeding'
+              )),
+  status        TEXT NOT NULL CHECK (status IN ('published','in-review','draft')),
+  authors       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  source_id     TEXT,
+  source_entity TEXT,
+  published_at  TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_publications_group ON group_publications (group_id);
+CREATE INDEX idx_group_publications_status ON group_publications (status);
+
+-- ---------------------------------------------------------------------------
+-- group_events
+-- An event hosted or co-hosted by the group.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_events (
+  id             TEXT NOT NULL,
+  group_id       TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title          TEXT NOT NULL,
+  description    TEXT,
+  type           TEXT NOT NULL CHECK (type IN (
+                 'seminar','workshop','meeting','lecture','journal-club','webinar','conference'
+               )),
+  mode           TEXT NOT NULL CHECK (mode IN ('in-person','online','hybrid')),
+  scheduled_at   TIMESTAMPTZ NOT NULL,
+  duration_hours INTEGER,
+  location       TEXT,
+  speakers       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status         TEXT NOT NULL CHECK (status IN ('scheduled','completed','cancelled')),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_events_group ON group_events (group_id);
+CREATE INDEX idx_group_events_status ON group_events (status);
+
+-- ---------------------------------------------------------------------------
+-- group_resources
+-- A shared resource curated by the group.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_resources (
+  id           TEXT NOT NULL,
+  group_id     TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title        TEXT NOT NULL,
+  type         TEXT NOT NULL CHECK (type IN (
+               'document','dataset','software','guideline','teaching-material','reference','tool'
+             )),
+  url          TEXT,
+  contributor  TEXT NOT NULL,
+  added_at     TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_resources_group ON group_resources (group_id);
+CREATE INDEX idx_group_resources_contributor ON group_resources (contributor);
+
+-- ---------------------------------------------------------------------------
+-- group_discussion_replies
+-- A threaded reply inside a group discussion.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_discussion_replies (
+  id            TEXT NOT NULL,
+  discussion_id TEXT NOT NULL,
+  author        TEXT NOT NULL,
+  author_name   TEXT,
+  body          TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_replies_discussion ON group_discussion_replies (discussion_id);
+
+-- ---------------------------------------------------------------------------
+-- group_discussions
+-- A discussion thread opened inside a group.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_discussions (
+  id          TEXT NOT NULL,
+  group_id    TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  body        TEXT,
+  author      TEXT NOT NULL,
+  author_name TEXT,
+  status      TEXT NOT NULL CHECK (status IN ('open','resolved','closed')),
+  pinned      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_discussions_group ON group_discussions (group_id);
+CREATE INDEX idx_group_discussions_status ON group_discussions (status);
+
+-- ---------------------------------------------------------------------------
+-- group_announcements
+-- An announcement broadcast to the group membership.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_announcements (
+  id          TEXT NOT NULL,
+  group_id    TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title       TEXT NOT NULL,
+  body        TEXT NOT NULL,
+  author      TEXT NOT NULL,
+  author_name TEXT,
+  pinned      BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_announcements_group ON group_announcements (group_id);
+
+-- ---------------------------------------------------------------------------
+-- group_projects
+-- A project run by the group, referencing canonical source records.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_projects (
+  id            TEXT NOT NULL,
+  group_id      TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  source_id     TEXT,
+  source_entity TEXT,
+  members       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status        TEXT NOT NULL CHECK (status IN ('planning','active','completed')),
+  started_at    TIMESTAMPTZ,
+  updated_at    TIMESTAMPTZ,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_projects_group ON group_projects (group_id);
+CREATE INDEX idx_group_projects_status ON group_projects (status);
+
+-- ---------------------------------------------------------------------------
+-- group_media
+-- A media item in the group gallery.
+-- ---------------------------------------------------------------------------
+CREATE TABLE group_media (
+  id          TEXT NOT NULL,
+  group_id    TEXT NOT NULL REFERENCES groups (id) ON DELETE CASCADE,
+  kind        TEXT NOT NULL CHECK (kind IN ('image','video','podcast','presentation')),
+  title       TEXT NOT NULL,
+  url         TEXT,
+  uploaded_by TEXT NOT NULL,
+  uploaded_at TIMESTAMPTZ NOT NULL,
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_group_media_group ON group_media (group_id);

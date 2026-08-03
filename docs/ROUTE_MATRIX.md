@@ -82,6 +82,14 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 | --- | --- | --- | --- | --- |
 | `/` (home) | Implemented | Yes | No | No |
 
+## Academic Groups (Phase 2.2G)
+
+| Route | Status | Implemented | Placeholder | Missing |
+| --- | --- | --- | --- | --- |
+| `/groups` | Implemented | Yes | No | No |
+| `/groups/[id]` | Implemented (by slug) | Yes | No | No |
+| `/groups/create` | Implemented | Yes | No | No |
+
 ## Summary
 
 | Metric | Count |
@@ -92,3 +100,6 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 | Placeholder (full) | 5 |
 | Placeholder (created in 0.95) | 14 |
 | Missing (404) | 0 |
+
+> Phase 2.2G added three implemented Academic Groups routes on top of the
+> Phase 0.95 totals above.
