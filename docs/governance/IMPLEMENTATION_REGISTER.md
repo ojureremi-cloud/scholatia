@@ -55,7 +55,11 @@
 | Phase 2.2D | Collaboration Workspace Platform — role-governed workspaces (groups, labs, project/institution/conference/journal spaces, communities). | Complete | `05d03d0` | `phase-2.2D` | Passed | None required | Spec: `docs/COLLABORATION_ARCHITECTURE.md`. |
 | Phase 2.2E | SWTROP — Scholarly Workflow, Task & Review Orchestration Platform (workflow, task, review & approval engines, workbench, artefacts). | Complete | `0bd240e` | `phase-2.2E` | Passed | None required | Spec: `docs/WORKFLOW_ARCHITECTURE.md`. |
 | Phase 2.2F | Milestone — Scholarly Collaboration Platform Complete (Phase 2.2 release milestone). | Complete | `ed90b89` | `phase-2.2F`, `v0.3-collaboration` | Passed | None required | Milestone release consolidating Phases 2.2A–2.2E. |
-| Phase 2.2G | Academic Groups Foundation — role-governed scholarly communities (research groups, departments, faculties, institutions, conference working groups, journal editorial groups, grant teams, laboratories, project teams, interest groups, professional networks) with governed membership and shared scholarship (publications, events, resources, discussions, announcements, projects, media). | Complete | `2e9dcb0` | `phase-2.2G` | Passed | None required | Module: `types/groups.ts`, `lib/groups.ts`, `constants/placeholder-groups.ts`, `hooks/useGroups.ts`, `components/groups/`, routes `/groups`, `/groups/[id]`, `/groups/create`. |
+| Phase 2.2G.1 | Academic Groups Foundation — role-governed scholarly communities (research groups, departments, faculties, institutions, conference working groups, journal editorial groups, grant teams, laboratories, project teams, interest groups, professional networks) with governed membership and shared scholarship (publications, events, resources, discussions, announcements, projects, media). | Complete | `2e9dcb0` | `phase-2.2G` | Passed | None required | Module: `types/groups.ts`, `lib/groups.ts`, `constants/placeholder-groups.ts`, `hooks/useGroups.ts`, `components/groups/`, routes `/groups`, `/groups/[id]`, `/groups/create`. |
+| Phase 2.2G.2 | Scholarly Communities. | Planned | — | — | N/A | N/A | Reserved for implementation. |
+| Phase 2.2G.3 | Learning Ecosystem. | Planned | — | — | N/A | N/A | Reserved for implementation. |
+| Phase 2.2G.4 | Marketplace Expansion. | Planned | — | — | N/A | N/A | Reserved for implementation. |
+| Phase 2.2G.5 | Cross-module Integration, Final Verification and Phase Completion. | Planned | — | — | N/A | N/A | Reserved for implementation. |
 
 # Earlier Completed Phases (reference)
 
@@ -89,7 +93,7 @@ recorded per the phase protocol.
 
 | Phase | Description | Status | Commit | Git Tag | Verification | Recovery | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Phase 2.2G+ | Notifications / Messaging / Activity expansion, Communities, Learning, Marketplace Expansion. | Planned | — | — | N/A | N/A | Per `docs/PHASE_ROADMAP.md` §5. |
+| Phase 2.2G+ | Notifications / Messaging / Activity expansion (remaining Phase 2.2 expansion). | Planned | — | — | N/A | N/A | Communities, Learning, Marketplace Expansion now tracked as Phase 2.2G.2–2.2G.4. |
 | Phase 3.0 | Collaboration Ecosystem — Research Groups, Communities, Discussion Forums, Messaging, Notifications, Activity Timeline, Research Labs, Institutional Spaces. | Planned | — | — | N/A | N/A | Per `docs/PHASE_ROADMAP.md` §6. |
 | Phase 4.0 | Enterprise Ecosystem — Enterprise / Publisher / Institution / Government / Industry / Reviewer / Editorial Portals, Admin Console. | Planned | — | — | N/A | N/A | Per `docs/PHASE_ROADMAP.md` §7. |
 | Phase 5.0 | Knowledge Ecosystem — Knowledge Graph, Citation Graph, Semantic Search, Recommendation Engine, AI Research Assistant, Research Digital Twin, Research Impact Engine. | Planned | — | — | N/A | N/A | Per `docs/PHASE_ROADMAP.md` §8. |
