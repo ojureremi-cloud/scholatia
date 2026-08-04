@@ -8,3 +8,5 @@ export const navigationItems = [
   { label: 'About', href: '#about' },
   { label: 'Contact', href: '#contact' },
 ];
+
+export * from './placeholder-learning';
