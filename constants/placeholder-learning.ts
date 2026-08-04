@@ -5,24 +5,32 @@ import type {
   LearningActivity,
   LearningAdaptiveRecommendation,
   LearningAnalytics,
+  LearningAnnouncement,
   LearningAssessment,
   LearningBadge,
+  LearningBookmark,
   LearningCertificate,
+  LearningCompetencyHistoryEntry,
   LearningCourse,
   LearningCpdRecord,
+  LearningDeadline,
   LearningEvent,
   LearningGoal,
+  LearningHighlight,
   LearningHistoryEntry,
   LearningInstitution,
+  LearningJournalEntry,
   LearningKpis,
   LearningLesson,
   LearningMentor,
   LearningMentorship,
   LearningModule,
+  LearningNote,
   LearningPath,
   LearningPortfolio,
   LearningProgramme,
   LearningProgressEntry,
+  LearningReading,
   LearningReadingList,
   LearningReadingPlaylist,
   LearningRubric,
@@ -958,6 +966,9 @@ export const READING_LISTS: LearningReadingList[] = [
     title: 'Core Methods Reading List',
     description: 'Foundational methodological readings for health research.',
     ownerUsername: SMITH.username,
+    category: 'Methods',
+    pinned: true,
+    favourite: true,
     items: [
       { id: 'rl-1', position: 1, title: 'Designing Clinical Research', authors: 'Hulley et al.', year: 2013, doi: '10.3233/978-1-61499-999-9' },
       { id: 'rl-2', position: 2, title: 'Research Design: Qualitative, Quantitative, and Mixed Methods', authors: 'Creswell, J.W.', year: 2018, doi: '10.4135/9781506386706' },
@@ -972,6 +983,8 @@ export const READING_LISTS: LearningReadingList[] = [
     title: 'Academic Writing Craft List',
     description: 'Readings on scholarly prose and argumentation.',
     ownerUsername: ADEBAYO.username,
+    category: 'Writing',
+    favourite: true,
     items: [
       { id: 'rl-4', position: 1, title: 'Style: Lessons in Clarity and Grace', authors: 'Williams, J.M.', year: 2014 },
       { id: 'rl-5', position: 2, title: 'They Say / I Say', authors: 'Graff & Birkenstein', year: 2017, doi: '10.4324/9781315111760' },
@@ -1593,3 +1606,126 @@ export const CURRENT_LEARNING_USER = CURRENT_USER;
 export const CURRENT_LEARNING_USER_NAME = OJURI.displayName;
 export const DEFAULT_COURSE = RESEARCH_METHODS_COURSE;
 export const DEFAULT_PROGRAMME = POSTGRADUATE_RESEARCH_PROGRAMME;
+
+// ---------------------------------------------------------------------------
+// Personal workspace (Wave 3 Stage B)
+// ---------------------------------------------------------------------------
+
+export const LEARNING_READINGS: LearningReading[] = [
+  { id: 'rd-1', title: 'Designing Clinical Research', authors: 'Hulley et al.', kind: 'research', progress: 62, estimatedMinutes: 180, openedAt: '2026-08-01T09:00:00.000Z', publicationType: 'Book' },
+  { id: 'rd-2', title: 'Systematic Reviews in the Health Sciences', authors: 'Higgins & Green', kind: 'research', progress: 18, estimatedMinutes: 240, openedAt: '2026-07-28T14:00:00.000Z', publicationType: 'Chapter' },
+  { id: 'rd-3', title: 'Research Methodology — Module 1 readings', kind: 'course', progress: 100, estimatedMinutes: 90, openedAt: '2026-07-20T10:00:00.000Z', publicationType: 'Course reading', ref: { nodeType: 'module', nodeId: RESEARCH_METHODS_MODULE_ONE.id } },
+  { id: 'rd-4', title: 'Applied Statistics with R — Chapter 3', kind: 'course', progress: 35, estimatedMinutes: 120, openedAt: '2026-07-30T16:00:00.000Z', publicationType: 'Course reading' },
+  { id: 'rd-5', title: 'Open Science: A Practical Guide', authors: 'Kraker et al.', kind: 'saved', progress: 0, estimatedMinutes: 150, openedAt: '2026-06-15T11:00:00.000Z', publicationType: 'Article' },
+  { id: 'rd-6', title: 'Grant Writing Handbook', authors: 'Devonport, L.', kind: 'saved', progress: 45, estimatedMinutes: 110, openedAt: '2026-07-12T08:30:00.000Z', publicationType: 'Handbook' },
+];
+
+export const LEARNING_NOTES: LearningNote[] = [
+  {
+    id: 'nt-1',
+    title: 'PICO framework reminder',
+    content: 'PICO: Population, Intervention, Comparison, Outcome. Keep the population narrow enough to stay answerable within the study window.',
+    richText: false,
+    pinned: true,
+    reference: { nodeType: 'lesson', nodeId: lessonId('From Research Question to Hypothesis'), label: 'From Research Question to Hypothesis' },
+    createdAt: D_JUN,
+    updatedAt: D_JUL,
+  },
+  {
+    id: 'nt-2',
+    title: 'Power and sample size',
+    content: 'Sample size trades off with effect size and power. Always pre-specify before data collection.',
+    richText: false,
+    pinned: true,
+    reference: { nodeType: 'topic', nodeId: topicId('Sample Size and Power'), label: 'Sample Size and Power' },
+    createdAt: D_JUN,
+    updatedAt: D_JUN,
+  },
+  {
+    id: 'nt-3',
+    title: 'Search strategy draft',
+    content: 'Databases: PubMed, Scopus, Cochrane. Combine MeSH terms with Boolean operators. Log every search.',
+    richText: false,
+    pinned: false,
+    reference: { nodeType: 'lesson', nodeId: lessonId('Systematic Search Strategies'), label: 'Systematic Search Strategies' },
+    createdAt: D_MAY,
+    updatedAt: D_JUN,
+  },
+  {
+    id: 'nt-4',
+    title: 'Writing block: introductions',
+    content: 'Open with the gap, state the question, preview the structure. Draft freely, edit later.',
+    richText: false,
+    pinned: false,
+    createdAt: D_JUN,
+    updatedAt: D_JUL,
+  },
+  {
+    id: 'nt-5',
+    title: 'Grant budget notes',
+    content: 'Justify every line. Include 10% contingency. Align costs with the workplan.',
+    richText: false,
+    pinned: false,
+    createdAt: D_MAY,
+    updatedAt: D_MAY,
+  },
+];
+
+export const LEARNING_HIGHLIGHTS: LearningHighlight[] = [
+  { id: 'hl-1', text: 'Randomisation reduces selection bias only when allocation is concealed from investigators.', sourceTitle: 'Designing Clinical Research', category: 'methodology', colour: '#f59e0b', createdAt: D_JUN },
+  { id: 'hl-2', text: 'A research question is answerable when it can be operationalised into measurable outcomes.', sourceTitle: 'Research Design: Qualitative, Quantitative, and Mixed Methods', category: 'definition', colour: '#6366f1', createdAt: D_JUN },
+  { id: 'hl-3', text: 'Reporting guidelines improve completeness and reproducibility of methods.', sourceTitle: 'Systematic Reviews in the Health Sciences', category: 'insight', colour: '#10b981', createdAt: D_JUL },
+  { id: 'hl-4', text: 'Pilot data can justify a modest but realistic power calculation.', sourceTitle: 'Statistical Methods in Health Sciences', category: 'finding', colour: '#0ea5e9', createdAt: D_JUL },
+  { id: 'hl-5', text: 'Cite primary sources for claims; cite the review only to point readers onward.', sourceTitle: 'Style: Lessons in Clarity and Grace', category: 'citation', colour: '#ec4899', createdAt: D_JUN },
+  { id: 'hl-6', text: 'Follow up on cluster-randomised designs for the intervention arm.', sourceTitle: 'Designing Clinical Research', category: 'follow-up', colour: '#8b5cf6', createdAt: D_JUL },
+];
+
+export const LEARNING_BOOKMARKS: LearningBookmark[] = [
+  { id: 'bm-1', title: 'Research Methodology for Health Sciences', kind: 'course', ref: { nodeType: 'course', nodeId: RESEARCH_METHODS_COURSE.id }, pinned: true, createdAt: D_MAR },
+  { id: 'bm-2', title: 'From Research Question to Hypothesis', kind: 'lesson', ref: { nodeType: 'lesson', nodeId: lessonId('From Research Question to Hypothesis') }, pinned: true, createdAt: D_MAR },
+  { id: 'bm-3', title: 'Sample Size and Power', kind: 'topic', ref: { nodeType: 'topic', nodeId: topicId('Sample Size and Power') }, pinned: false, createdAt: D_JUN },
+  { id: 'bm-4', title: 'Designing Clinical Research', kind: 'reading', pinned: true, createdAt: D_JUN },
+  { id: 'bm-5', title: 'Systematic review protocol template', kind: 'research', pinned: false, createdAt: D_MAY },
+  { id: 'bm-6', title: 'R reproducibility webinar recording', kind: 'video', pinned: false, createdAt: D_MAY },
+  { id: 'bm-7', title: 'MeSH term generator', kind: 'resource', pinned: false, createdAt: D_JUN },
+];
+
+export const LEARNING_JOURNAL: LearningJournalEntry[] = [
+  { id: 'jr-1', date: '2026-07-25', kind: 'daily', title: 'Drafting the introduction', content: 'Moved the gap statement to the opening paragraph and tightened the research question. Aiming for 1,200 words by Friday.', tags: ['writing', 'systematic-review'] },
+  { id: 'jr-2', date: '2026-07-18', kind: 'log', title: 'Completed ethics course', content: 'Finished Research Ethics Essentials and passed the case study at 88%.', tags: ['ethics', 'credential'] },
+  { id: 'jr-3', date: '2026-07-11', kind: 'reflection', title: 'What makes a search comprehensive?', content: 'Reflecting on how iteration between pilot searches and controlled vocabularies sharpens a review protocol.', tags: ['methods'] },
+  { id: 'jr-4', date: '2026-07-04', kind: 'research', title: 'Data analysis notes', content: 'Worked through regression diagnostics in R. Watch for heteroscedasticity in small samples.', tags: ['statistics', 'r'] },
+  { id: 'jr-5', date: '2026-07-01', kind: 'weekly', title: 'Weekly summary — w/c 29 June', content: 'Finished module one of Research Methodology; started the R bootcamp; shortlisted two target journals.', tags: ['weekly'] },
+  { id: 'jr-6', date: '2026-07-01', kind: 'diary', title: 'Progress diary — July', content: 'Credentialed in ethics and data literacy. Next milestone: systematic review protocol sign-off.', tags: ['diary'] },
+  { id: 'jr-7', date: '2026-07-01', kind: 'monthly', title: 'Monthly summary — June', content: 'Completed two courses, recorded 6 hours CPD, and passed the grant proposal draft.', tags: ['monthly'] },
+];
+
+export const LEARNING_ANNOUNCEMENTS: LearningAnnouncement[] = [
+  { id: 'an-1', title: 'Methods Journal Club — August', body: 'Join us 12 August to discuss cluster-randomised trials. Readings shared in the reading list.', author: 'Dr. Adebayo', publishedAt: D_JUL },
+  { id: 'an-2', title: 'Research Data Week', body: 'Workshops on FAIR data and reproducible workflows run all week from 1 September.', author: 'The Library', publishedAt: D_JUL },
+  { id: 'an-3', title: 'Grant clinic booking open', body: 'Book a 30-minute review slot with the research office for your proposal draft.', author: 'Research Office', publishedAt: D_JUN },
+];
+
+export const LEARNING_DEADLINES: LearningDeadline[] = [
+  { id: 'dl-1', title: 'Systematic review protocol (final)', dueAt: '2026-08-15T16:00:00.000Z', kind: 'assessment', ref: { nodeType: 'assessment', nodeId: 'asm-lit-review-protocol' } },
+  { id: 'dl-2', title: 'Grant proposal draft', dueAt: '2026-08-28T16:00:00.000Z', kind: 'submission' },
+  { id: 'dl-3', title: 'Systematic Review Workshop', dueAt: '2026-09-10T09:00:00.000Z', kind: 'event' },
+  { id: 'dl-4', title: 'Secure a competitive research grant', dueAt: '2026-12-31T23:59:00.000Z', kind: 'goal' },
+];
+
+export const LEARNING_COMPETENCY_HISTORY: LearningCompetencyHistoryEntry[] = [
+  { competencyKey: 'research-design', level: 1, at: D_MAR },
+  { competencyKey: 'research-design', level: 3, at: D_JUN },
+  { competencyKey: 'literature-review', level: 2, at: D_MAR },
+  { competencyKey: 'literature-review', level: 3, at: D_JUN },
+  { competencyKey: 'data-analysis', level: 1, at: D_MAR },
+  { competencyKey: 'data-analysis', level: 2, at: D_JUN },
+  { competencyKey: 'data-literacy', level: 2, at: D_MAR },
+  { competencyKey: 'data-literacy', level: 3, at: D_JUL },
+  { competencyKey: 'academic-writing', level: 1, at: D_MAR },
+  { competencyKey: 'academic-writing', level: 2, at: D_JUN },
+  { competencyKey: 'research-ethics', level: 2, at: D_MAR },
+  { competencyKey: 'research-ethics', level: 3, at: D_JUL },
+  { competencyKey: 'grant-writing', level: 1, at: D_MAY },
+  { competencyKey: 'grant-writing', level: 2, at: D_JUN },
+];

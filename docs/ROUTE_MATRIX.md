@@ -100,6 +100,28 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 | `/community-directory` | Implemented | Yes | No | No |
 | `/community-feed` | Implemented | Yes | No | No |
 
+## Learning Ecosystem (Phase 2.2G.3)
+
+| Route | Status | Implemented | Placeholder | Missing |
+| --- | --- | --- | --- | --- |
+| `/learning` | Implemented | Yes | No | No |
+| `/learning/workspace` | Implemented | Yes | No | No |
+| `/learning/reading` | Implemented | Yes | No | No |
+| `/learning/home` | Implemented | Yes | No | No |
+| `/learning/courses` | Implemented | Yes | No | No |
+| `/learning/courses/[slug]` | Implemented | Yes | No | No |
+| `/learning/programmes` | Implemented | Yes | No | No |
+| `/learning/programmes/[slug]` | Implemented | Yes | No | No |
+| `/learning/programmes/manage` | Implemented | Yes | No | No |
+| `/learning/paths` | Implemented | Yes | No | No |
+| `/learning/paths/[slug]` | Implemented | Yes | No | No |
+| `/learning/educator` | Implemented | Yes | No | No |
+| `/learning/mentor` | Implemented | Yes | No | No |
+| `/learning/assessments` | Implemented | Yes | No | No |
+| `/learning/institutions` | Implemented | Yes | No | No |
+| `/learning/analytics` | Implemented | Yes | No | No |
+| `/learning/admin` | Implemented | Yes | No | No |
+
 ## Summary
 
 | Metric | Count |
@@ -117,3 +139,6 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 > Phase 2.2G.2 added five implemented Scholarly Communities routes
 > (`/communities`, `/communities/[slug]`, `/communities/create`,
 > `/community-directory`, `/community-feed`) on top of the Phase 2.2G totals.
+>
+> Phase 2.2G.3 added seventeen implemented Learning Ecosystem routes
+> (`/learning` and all `/learning/*` listed above) on top of the Phase 2.2G.2 totals.

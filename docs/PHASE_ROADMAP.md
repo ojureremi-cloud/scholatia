@@ -81,6 +81,7 @@ Completed
 - Workflow, Task & Review Orchestration (SWTROP)
 - Groups
 - Communities
+- Learning Ecosystem (Phase 2.2G.3 — Learning, Programme Management, Assessments, Competency, Certification, Mentorship, Portfolios, CPD, Adaptive & Analytics, Educator/Mentor/Administration dashboards; 17 `/learning` routes)
 
 In Progress
 
@@ -88,7 +89,6 @@ None.
 
 Planned
 
-- Learning
 - Marketplace Expansion
 
 ## SECTION 6 — Phase 3 (Collaboration Ecosystem)

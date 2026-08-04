@@ -561,6 +561,15 @@ export const ANALYTICS_SCOPE_LABELS: Record<AnalyticsScope, string> = {
   global: 'Global',
 };
 
+export const ANALYTICS_SCOPE_ICONS: Record<AnalyticsScope, string> = {
+  learner: '👤',
+  cohort: '👥',
+  faculty: '🏫',
+  institution: '🏛️',
+  national: '🌍',
+  global: '🌐',
+};
+
 export const PROGRESS_STATES: readonly ProgressState[] = ['not-started', 'in-progress', 'completed'] as const;
 
 export const PROGRESS_STATE_LABELS: Record<ProgressState, string> = {
@@ -668,6 +677,18 @@ export const INSTITUTION_KIND_LABELS: Record<InstitutionKind, string> = {
   ngo: 'Non-Governmental Organisation',
   academy: 'Academy',
   corporate: 'Corporate',
+};
+
+export const INSTITUTION_KIND_ICONS: Record<InstitutionKind, string> = {
+  university: '🎓',
+  polytechnic: '🏭',
+  'college-of-education': '🏫',
+  'research-institute': '🔬',
+  'professional-body': '🪪',
+  agency: '🏛️',
+  ngo: '🌍',
+  academy: '📚',
+  corporate: '🏢',
 };
 
 // ---------------------------------------------------------------------------
@@ -899,6 +920,10 @@ export type LearningReadingList = {
   items: LearningReadingListItem[];
   createdAt: string;
   updatedAt: string;
+  category?: string;
+  pinned?: boolean;
+  favourite?: boolean;
+  archived?: boolean;
 };
 
 /** An item of a reading playlist (references another learning object). */
@@ -1770,6 +1795,36 @@ export const LEARNING_RESOURCE_KIND_LABELS: Record<LearningResourceKind, string>
   notification: 'Notification',
 };
 
+export const LEARNING_RESOURCE_KIND_ICONS: Record<LearningResourceKind, string> = {
+  programme: '🎓',
+  curriculum: '📚',
+  course: '📘',
+  microCourse: '📗',
+  module: '🗂️',
+  lesson: '📖',
+  topic: '📌',
+  activity: '✍️',
+  assessment: '✅',
+  'reading-list': '📄',
+  'reading-playlist': '🎧',
+  path: '🧭',
+  competency: '🧩',
+  certificate: '📜',
+  badge: '🎖️',
+  cpd: '⏱️',
+  passport: '🛂',
+  portfolio: '📁',
+  mentor: '🧭',
+  mentorship: '🤝',
+  event: '📅',
+  academy: '🏛️',
+  institution: '🏦',
+  goal: '🎯',
+  recommendation: '💡',
+  analytics: '📊',
+  notification: '🔔',
+};
+
 export const LEARNING_WORKFLOW_KINDS: readonly LearningWorkflowKind[] = [
   'enrolment',
   'withdrawal',
@@ -1810,6 +1865,27 @@ export const LEARNING_WORKFLOW_KIND_LABELS: Record<LearningWorkflowKind, string>
   portfolio: 'Portfolio',
   competency: 'Competency',
   'goal-completion': 'Goal Completion',
+};
+
+export const LEARNING_WORKFLOW_KIND_ICONS: Record<LearningWorkflowKind, string> = {
+  enrolment: '✉️',
+  withdrawal: '🚪',
+  'topic-completion': '📌',
+  'lesson-completion': '📖',
+  'module-completion': '🗂️',
+  'course-completion': '📘',
+  'path-progress': '🧭',
+  'curriculum-progress': '📚',
+  'programme-progress': '🎓',
+  'research-exercise-progress': '🔬',
+  assessment: '✅',
+  certificate: '📜',
+  badge: '🎖️',
+  cpd: '⏱️',
+  passport: '🛂',
+  portfolio: '📁',
+  competency: '🧩',
+  'goal-completion': '🎯',
 };
 
 export const LEARNING_VALIDATION_SEVERITIES: readonly LearningValidationSeverity[] = ['error', 'warning', 'info'] as const;
@@ -1936,4 +2012,221 @@ export type LearningLearnerAnalytics = {
   engagement: number;
   goalProgress: LearningGoalProgressStat[];
   mentorship: LearningMentorshipActivityStat[];
+};
+
+// ---------------------------------------------------------------------------
+// Personal workspace (Wave 3 Stage B)
+// ---------------------------------------------------------------------------
+
+/** Category of a personal reading entry. */
+export type LearningReadingKind = 'research' | 'course' | 'saved';
+
+/** A reading item tracked in the reading workspace. */
+export type LearningReading = {
+  id: string;
+  title: string;
+  authors?: string;
+  kind: LearningReadingKind;
+  progress: number;
+  estimatedMinutes: number;
+  openedAt: string;
+  publicationType?: string;
+  ref?: LearningObjectRef;
+};
+
+/** Reference of a personal note into the learning graph. */
+export type LearningNoteReference = {
+  nodeType?: 'course' | 'module' | 'lesson' | 'topic';
+  nodeId?: string;
+  label?: string;
+};
+
+/** A personal note attached to a learning object. */
+export type LearningNote = {
+  id: string;
+  title: string;
+  content: string;
+  richText?: boolean;
+  pinned: boolean;
+  reference?: LearningNoteReference;
+  createdAt: string;
+  updatedAt: string;
+};
+
+/** Category of a saved highlight. */
+export type LearningHighlightCategory =
+  | 'methodology'
+  | 'finding'
+  | 'definition'
+  | 'citation'
+  | 'insight'
+  | 'follow-up';
+
+/** The canonical highlight categories. */
+export const LEARNING_HIGHLIGHT_CATEGORIES: readonly LearningHighlightCategory[] = [
+  'methodology',
+  'finding',
+  'definition',
+  'citation',
+  'insight',
+  'follow-up',
+];
+
+/** A highlighted passage with a category and colour. */
+export type LearningHighlight = {
+  id: string;
+  text: string;
+  sourceTitle: string;
+  sourceRef?: LearningObjectRef;
+  category: LearningHighlightCategory;
+  colour: string;
+  createdAt: string;
+};
+
+/** Kind of a saved bookmark. */
+export type LearningBookmarkKind =
+  | 'course'
+  | 'lesson'
+  | 'module'
+  | 'topic'
+  | 'reading'
+  | 'research'
+  | 'video'
+  | 'resource';
+
+/** A saved shortcut to a learning object or external resource. */
+export type LearningBookmark = {
+  id: string;
+  title: string;
+  kind: LearningBookmarkKind;
+  ref?: LearningObjectRef;
+  pinned: boolean;
+  createdAt: string;
+};
+
+/** Kind of a learning journal entry. */
+export type LearningJournalEntryKind = 'daily' | 'reflection' | 'log' | 'research' | 'weekly' | 'monthly' | 'diary';
+
+/** A learning journal entry. */
+export type LearningJournalEntry = {
+  id: string;
+  date: string;
+  kind: LearningJournalEntryKind;
+  title: string;
+  content: string;
+  tags?: string[];
+};
+
+/** A learning announcement. */
+export type LearningAnnouncement = {
+  id: string;
+  title: string;
+  body: string;
+  author: string;
+  publishedAt: string;
+};
+
+/** Kind of a deadline tracked in the workspace. */
+export type LearningDeadlineKind = 'assessment' | 'event' | 'goal' | 'submission';
+
+/** An upcoming deadline in the workspace calendar. */
+export type LearningDeadline = {
+  id: string;
+  title: string;
+  dueAt: string;
+  kind: LearningDeadlineKind;
+  ref?: LearningObjectRef;
+};
+
+/** A competency level snapshot over time. */
+export type LearningCompetencyHistoryEntry = {
+  competencyKey: string;
+  level: number;
+  at: string;
+};
+
+export const LEARNING_READING_KIND_LABELS: Record<LearningReadingKind, string> = {
+  research: 'Research',
+  course: 'Course',
+  saved: 'Saved',
+};
+
+export const LEARNING_READING_KIND_ICONS: Record<LearningReadingKind, string> = {
+  research: '🔬',
+  course: '📚',
+  saved: '🔖',
+};
+
+export const HIGHLIGHT_CATEGORY_LABELS: Record<LearningHighlightCategory, string> = {
+  methodology: 'Methodology',
+  finding: 'Finding',
+  definition: 'Definition',
+  citation: 'Citation',
+  insight: 'Insight',
+  'follow-up': 'Follow-up',
+};
+
+export const HIGHLIGHT_CATEGORY_ICONS: Record<LearningHighlightCategory, string> = {
+  methodology: '🧭',
+  finding: '💡',
+  definition: '📖',
+  citation: '✍️',
+  insight: '🧠',
+  'follow-up': '➡️',
+};
+
+export const BOOKMARK_KIND_LABELS: Record<LearningBookmarkKind, string> = {
+  course: 'Course',
+  lesson: 'Lesson',
+  module: 'Module',
+  topic: 'Topic',
+  reading: 'Reading',
+  research: 'Research',
+  video: 'Video',
+  resource: 'Resource',
+};
+
+export const BOOKMARK_KIND_ICONS: Record<LearningBookmarkKind, string> = {
+  course: '📘',
+  lesson: '📖',
+  module: '📦',
+  topic: '🧩',
+  reading: '📚',
+  research: '🔬',
+  video: '🎥',
+  resource: '🗂️',
+};
+
+export const JOURNAL_KIND_LABELS: Record<LearningJournalEntryKind, string> = {
+  daily: 'Daily',
+  reflection: 'Reflection',
+  log: 'Log',
+  research: 'Research',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+  diary: 'Diary',
+};
+
+export const JOURNAL_KIND_ICONS: Record<LearningJournalEntryKind, string> = {
+  daily: '📅',
+  reflection: '🪞',
+  log: '🗒️',
+  research: '🔬',
+  weekly: '🗓️',
+  monthly: '📆',
+  diary: '📓',
+};
+
+export const DEADLINE_KIND_LABELS: Record<LearningDeadlineKind, string> = {
+  assessment: 'Assessment',
+  event: 'Event',
+  goal: 'Goal',
+  submission: 'Submission',
+};
+
+export const DEADLINE_KIND_ICONS: Record<LearningDeadlineKind, string> = {
+  assessment: '📝',
+  event: '📌',
+  goal: '🎯',
+  submission: '📤',
 };

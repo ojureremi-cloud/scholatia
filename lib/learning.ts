@@ -1080,9 +1080,8 @@ export function recommendLearning(
 
 /** The single most valuable next course for a learner. */
 export function nextBestCourse(courses: readonly LearningCourse[], progress: readonly LearningProgressEntry[]): LearningCourse | undefined {
-  return recommendLearning(courses, progress, { top: 1 })[0]?.target
-    ? courses.find((course) => course.id === recommendLearning(courses, progress, { top: 1 })[0]?.target?.nodeId)
-    : undefined;
+  const target = recommendLearning(courses, progress, { top: 1 })[0]?.target;
+  return target ? courses.find((course) => course.id === target.nodeId) : undefined;
 }
 
 /** Recommendations for competency gaps behind a learner's goals. */
