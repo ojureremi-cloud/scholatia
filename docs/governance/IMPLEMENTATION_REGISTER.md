@@ -15,7 +15,7 @@
 > `docs/AI_DEVELOPMENT_PROTOCOL.md`.
 >
 > Git tags and commit hashes below were verified against the repository's git
-> history on 2026-08-02.
+> history on 2026-08-04.
 
 ---
 
@@ -56,7 +56,7 @@
 | Phase 2.2E | SWTROP — Scholarly Workflow, Task & Review Orchestration Platform (workflow, task, review & approval engines, workbench, artefacts). | Complete | `0bd240e` | `phase-2.2E` | Passed | None required | Spec: `docs/WORKFLOW_ARCHITECTURE.md`. |
 | Phase 2.2F | Milestone — Scholarly Collaboration Platform Complete (Phase 2.2 release milestone). | Complete | `ed90b89` | `phase-2.2F`, `v0.3-collaboration` | Passed | None required | Milestone release consolidating Phases 2.2A–2.2E. |
 | Phase 2.2G.1 | Academic Groups Foundation — role-governed scholarly communities (research groups, departments, faculties, institutions, conference working groups, journal editorial groups, grant teams, laboratories, project teams, interest groups, professional networks) with governed membership and shared scholarship (publications, events, resources, discussions, announcements, projects, media). | Complete | `2e9dcb0` | `phase-2.2G` | Passed | None required | Module: `types/groups.ts`, `lib/groups.ts`, `constants/placeholder-groups.ts`, `hooks/useGroups.ts`, `components/groups/`, routes `/groups`, `/groups/[id]`, `/groups/create`. |
-| Phase 2.2G.2 | Scholarly Communities. | Planned | — | — | N/A | N/A | Reserved for implementation. |
+| Phase 2.2G.2 | Scholarly Communities — open scholarly knowledge ecosystems centred around discussion, collaboration, mentoring, networking, learning, and academic exchange. Communities are not Groups: a community owns a profile, a discovery surface, an open membership and followers, and a rich exchange surface — announcements, threaded discussions, Q&A, knowledge sharing (articles, preprints, datasets, DOIs, ORCID references), events (webinars, journal clubs, reading groups), polls, mentorship pairings, opportunities, scholar spotlights, achievements, bookmarks, and trending topics — with explicit moderation (reports, warnings, appeals). Derived counts and activity scores are computed by the pure engine from the typed community graph; creators, members, mentors, experts, ambassadors, and followers reference canonical researchers by username. | Complete | `63f5256` | `phase-2.2G.2` | Passed | None required | Module: `types/communities.ts`, `lib/communities.ts`, `constants/placeholder-communities.ts`, `hooks/useCommunities.ts`, `components/communities/`, routes `/communities`, `/communities/[slug]`, `/communities/create`, `/community-directory`, `/community-feed`. |
 | Phase 2.2G.3 | Learning Ecosystem. | Planned | — | — | N/A | N/A | Reserved for implementation. |
 | Phase 2.2G.4 | Marketplace Expansion. | Planned | — | — | N/A | N/A | Reserved for implementation. |
 | Phase 2.2G.5 | Cross-module Integration, Final Verification and Phase Completion. | Planned | — | — | N/A | N/A | Reserved for implementation. |

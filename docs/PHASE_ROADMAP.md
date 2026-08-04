@@ -79,14 +79,15 @@ Completed
 - Activity Feed
 - Collaboration Workspaces
 - Workflow, Task & Review Orchestration (SWTROP)
+- Groups
+- Communities
 
 In Progress
 
-- Groups
+None.
 
 Planned
 
-- Communities
 - Learning
 - Marketplace Expansion
 

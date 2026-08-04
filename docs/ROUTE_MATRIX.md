@@ -90,6 +90,16 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 | `/groups/[id]` | Implemented (by slug) | Yes | No | No |
 | `/groups/create` | Implemented | Yes | No | No |
 
+## Scholarly Communities (Phase 2.2G.2)
+
+| Route | Status | Implemented | Placeholder | Missing |
+| --- | --- | --- | --- | --- |
+| `/communities` | Implemented | Yes | No | No |
+| `/communities/[slug]` | Implemented (by slug) | Yes | No | No |
+| `/communities/create` | Implemented | Yes | No | No |
+| `/community-directory` | Implemented | Yes | No | No |
+| `/community-feed` | Implemented | Yes | No | No |
+
 ## Summary
 
 | Metric | Count |
@@ -103,3 +113,7 @@ Every row below was verified against the actual App Router (`app/<route>/page.ts
 
 > Phase 2.2G added three implemented Academic Groups routes on top of the
 > Phase 0.95 totals above.
+>
+> Phase 2.2G.2 added five implemented Scholarly Communities routes
+> (`/communities`, `/communities/[slug]`, `/communities/create`,
+> `/community-directory`, `/community-feed`) on top of the Phase 2.2G totals.
