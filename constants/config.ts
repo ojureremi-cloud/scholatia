@@ -44,4 +44,5 @@ export const platformModules = [
   { label: 'Publishing', href: '#services' },
   { label: 'Identity', href: '#services' },
   { label: 'Discovery', href: '#services' },
+  { label: 'Communities', href: '/communities' },
 ];
