@@ -1,3 +1,12 @@
+import {
+  crieEntities,
+  crieEnterpriseModel,
+  crieFederationContracts,
+  crieFederationExchanges,
+  crieGraph,
+  crieInstitutionalAssets,
+  crieMemberSovereignty,
+} from '@/lib/crie/access';
 import { criePolicyModel, crieTrustModel } from '../data';
 import { crieInstitutionModel, crieFederationModel } from '../data';
 import { CRIEStats } from '../core';
@@ -7,15 +16,29 @@ import { formatNumber } from '../format';
 
 export function SettingsOverview() {
   const policy = criePolicyModel();
-  const trust = crieTrustModel();
-  const institution = crieInstitutionModel();
-  const federation = crieFederationModel();
+  const trust = crieTrustModel(crieGraph());
+  const enterprise = crieEnterpriseModel();
+  const sovereignty = crieMemberSovereignty();
+  const institution = enterprise
+    ? crieInstitutionModel({
+        entities: crieEntities(),
+        enterprise,
+        assets: crieInstitutionalAssets(),
+      })
+    : null;
+  const federation = sovereignty
+    ? crieFederationModel({
+        contracts: crieFederationContracts(),
+        exchanges: crieFederationExchanges(),
+        sovereignty,
+      })
+    : null;
 
   const stats: CRIEStat[] = [
     { title: 'Policy rules', value: formatNumber(policy.statistics.rules), icon: '📜' },
     { title: 'Trust scores', value: formatNumber(trust.statistics.total), icon: '🛡️' },
-    { title: 'IKOS assets', value: formatNumber(institution.statistics.assets), icon: '📦' },
-    { title: 'Federation contracts', value: formatNumber(federation.statistics.contracts), icon: '🤝' },
+    { title: 'IKOS assets', value: formatNumber(institution?.statistics.assets ?? 0), icon: '📦' },
+    { title: 'Federation contracts', value: formatNumber(federation?.statistics.contracts ?? 0), icon: '🤝' },
   ];
 
   return (
@@ -25,7 +48,7 @@ export function SettingsOverview() {
         <Chip tone="success">{formatNumber(policy.statistics.grants)} policy grants</Chip>
         <Chip tone="warning">{formatNumber(policy.statistics.pendingApproval)} pending approvals</Chip>
         <Chip tone="danger">{formatNumber(policy.statistics.refusals)} refusals</Chip>
-        <Chip tone="info">{formatNumber(federation.statistics.exchanges)} governed exchanges</Chip>
+        <Chip tone="info">{formatNumber(federation?.statistics.exchanges ?? 0)} governed exchanges</Chip>
       </div>
       <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
         Administration surface for CRIE governance: policy enforcement, research-ethics review, trust, institutional

@@ -1,3 +1,4 @@
+import { crieCareerGoals, crieCareerSignals, crieMentorshipGuidance, crieSupervisionRecords } from '@/lib/crie/access';
 import { crieCollaborationModel } from '../data';
 import { Panel, Stack, Chip } from '../primitives';
 import { formatDate, statusTone } from '../format';
@@ -13,7 +14,17 @@ function NumericRows(stats: object) {
 }
 
 export function CollaborationAnalytics() {
-  const model = crieCollaborationModel();
+  const careerGoal = crieCareerGoals()[0];
+  const careerSignal = crieCareerSignals()[0];
+  if (!careerGoal || !careerSignal) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No career profile is available.</p>;
+  }
+  const model = crieCollaborationModel({
+    careerGoal,
+    careerSignal,
+    supervisionRecords: crieSupervisionRecords(),
+    mentorshipGuidance: crieMentorshipGuidance(),
+  });
 
   return (
     <Stack>

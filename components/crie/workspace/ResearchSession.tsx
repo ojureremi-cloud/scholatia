@@ -1,7 +1,6 @@
 'use client';
 
 import type { ResearchSession, SessionMessage } from '@/types/crie';
-import { CRIE_SESSION_MESSAGES } from '@/constants/placeholder-crie';
 import { Chip, Panel } from '../primitives';
 import { formatDateTime, statusTone } from '../format';
 
@@ -12,7 +11,7 @@ type ResearchSessionProps = {
 
 export function ResearchSession({ session, messages }: ResearchSessionProps) {
   const goals = session.goals ?? [];
-  const transcript = messages ?? CRIE_SESSION_MESSAGES;
+  const transcript = messages ?? [];
 
   return (
     <Panel eyebrow="Session" title={`Session — ${session.id}`} icon="⏱️">

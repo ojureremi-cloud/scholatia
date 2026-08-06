@@ -10,7 +10,9 @@ import { nowIso } from './utils';
  * Loads the Wave 1/2 placeholder constants once into the in-memory store so the
  * repository/services layer reads live rows instead of constants. The constants
  * in `constants/placeholder-crie.ts` are dev-seed-only and must not be imported
- * by the API/UI paths — components consume the store through `useCRIE`.
+ * by the API/UI paths — server components consume the store through
+ * `lib/crie/access.ts` and server pages pass runtime snapshots to client
+ * components.
  */
 
 const SEED_AT = '2026-08-04T12:00:00.000Z';
@@ -171,6 +173,7 @@ export function seedCrie(): void {
       assetKind: 'repository',
       title: 'Research knowledge graph corpus',
       accessClass: 'institution',
+      consentScope: ['research-analytics'],
       curator: 'ojuri',
       createdAt: SEED_AT,
       updatedAt: SEED_AT,
@@ -188,6 +191,7 @@ export function seedCrie(): void {
       status: 'active',
       dataScope: ['publication-meta'],
       consentScope: ['aggregate'],
+      sovereigntyClauses: ['No raw researcher data', 'Aggregate results only'],
       createdAt: SEED_AT,
       updatedAt: SEED_AT,
     },
@@ -196,11 +200,11 @@ export function seedCrie(): void {
     {
       id: 'fed-exchange-001',
       crieId: 'crie-fed-exchange-001',
-      contractId: 'fed-contract-001',
+      federationContractId: 'fed-contract-001',
       exchangeType: 'aggregate',
       payloadRef: 'aggregate-publication-metrics',
       consentScope: ['aggregate'],
-      confidence: 0.8,
+      confidence: { value: 0.8, band: 'high' },
       createdAt: SEED_AT,
     },
   ]);

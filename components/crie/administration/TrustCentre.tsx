@@ -1,3 +1,4 @@
+import { crieGraph } from '@/lib/crie/access';
 import { crieTrustModel } from '../data';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
@@ -5,7 +6,7 @@ import { Panel, Stack, Chip, ProgressBar } from '../primitives';
 import { formatNumber, formatPercent } from '../format';
 
 export function TrustCentre() {
-  const model = crieTrustModel();
+  const model = crieTrustModel(crieGraph());
 
   const stats: CRIEStat[] = [
     { title: 'Scores', value: formatNumber(model.statistics.total), icon: '🛡️' },

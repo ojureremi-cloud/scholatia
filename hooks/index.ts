@@ -40,5 +40,4 @@ export { default as useAnnotations } from './useAnnotations';
 export { default as useComments } from './useComments';
 export { default as useGroups } from './useGroups';
 export { default as useCommunities } from './useCommunities';
-export { default as useCRIE } from './useCRIE';
 export { default as useLearning } from './useLearning';

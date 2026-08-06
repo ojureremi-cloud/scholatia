@@ -1,3 +1,4 @@
+import { crieEntities, crieLearnerStates, criePublicationPlans, crieWritingDrafts } from '@/lib/crie/access';
 import { crieProductivityModel } from '../data';
 import { Panel, Stack } from '../primitives';
 
@@ -12,7 +13,12 @@ function NumericRows(stats: object) {
 }
 
 export function ProductivityAnalytics() {
-  const model = crieProductivityModel();
+  const model = crieProductivityModel({
+    entities: crieEntities(),
+    writingDrafts: crieWritingDrafts(),
+    learnerStates: crieLearnerStates(),
+    publicationPlans: criePublicationPlans(),
+  });
 
   return (
     <Stack>

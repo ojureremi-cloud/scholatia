@@ -1,3 +1,14 @@
+import {
+  crieAnalytics,
+  crieCareerGoals,
+  crieCareerSignals,
+  crieCitationContexts,
+  crieCitations,
+  crieLiteratureSearches,
+  crieNoveltyAssessments,
+  crieReferences,
+  crieResearchGaps,
+} from '@/lib/crie/access';
 import { crieImpactModel } from '../data';
 import { Panel, Stack } from '../primitives';
 
@@ -12,7 +23,21 @@ function NumericRows(stats: object) {
 }
 
 export function ImpactAnalytics() {
-  const model = crieImpactModel();
+  const analytics = crieAnalytics()[0];
+  if (!analytics) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No analytics snapshots are available.</p>;
+  }
+  const model = crieImpactModel({
+    analytics,
+    references: crieReferences(),
+    citations: crieCitations(),
+    citationContexts: crieCitationContexts(),
+    literatureSearches: crieLiteratureSearches(),
+    researchGaps: crieResearchGaps(),
+    noveltyAssessments: crieNoveltyAssessments(),
+    careerGoals: crieCareerGoals(),
+    careerSignals: crieCareerSignals(),
+  });
 
   return (
     <Stack>

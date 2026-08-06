@@ -9,16 +9,42 @@
  * through the permission-enforcing services and the `/api/crie/**` routes.
  */
 import type {
+  CareerGoal,
+  CareerSignal,
+  Citation,
+  CitationContext,
+  Claim,
+  ContextElement,
   ContextPack,
+  Contradiction,
+  EnterpriseCognitiveModel,
+  EthicsDecision,
+  EthicsReview,
+  EvidenceAssessment,
+  EvidenceRecord,
+  FederationContract,
+  GovernedExchange,
+  InstitutionalKnowledgeAsset,
   KGEntity,
   KGRelation,
   KnowledgeGraph,
+  LearnerState,
+  LiteratureSearch,
+  MemberSovereignty,
   MemoryItem,
+  MentorshipGuidance,
+  NoveltyAssessment,
   OrchestrationPlan,
+  PublicationPlan,
   Recommendation,
+  Reference,
+  ResearchAnalytics,
   ResearchEntity,
+  ResearchGap,
   ResearchSession,
   SessionMessage,
+  SupervisionRecord,
+  WritingDraft,
 } from '@/types/crie';
 import { ensureCrieSeeded } from './db/seed';
 import { getCrieStore, tableOf } from './db/store';
@@ -100,18 +126,28 @@ export function crieRecommendation(): Recommendation | undefined {
 }
 
 /** Evidence records. */
-export function crieEvidence(): unknown[] {
-  return valuesOf('crie_evidence_records');
+export function crieEvidence(): EvidenceRecord[] {
+  return valuesOf('crie_evidence_records') as unknown as EvidenceRecord[];
+}
+
+/** Evidence assessments (per claim/record verdicts). */
+export function crieEvidenceAssessments(): EvidenceAssessment[] {
+  return valuesOf('crie_evidence_assessments') as unknown as EvidenceAssessment[];
+}
+
+/** Contradictions between claims. */
+export function crieContradictions(): Contradiction[] {
+  return valuesOf('crie_contradictions') as unknown as Contradiction[];
 }
 
 /** Citation records. */
-export function crieCitations(): unknown[] {
-  return valuesOf('crie_citations');
+export function crieCitations(): Citation[] {
+  return valuesOf('crie_citations') as unknown as Citation[];
 }
 
 /** Analytics records. */
-export function crieAnalytics(): unknown[] {
-  return valuesOf('crie_analytics_records');
+export function crieAnalytics(): ResearchAnalytics[] {
+  return valuesOf('crie_analytics_records') as unknown as ResearchAnalytics[];
 }
 
 /** The canonical CRIE demo researcher (owner of seeded entities). */
@@ -121,4 +157,117 @@ export function crieCurrentResearcher(): { username: string; name?: string } {
   if (owner && typeof owner === 'object' && owner.username) return { username: owner.username, name: owner.name };
   if (owner && typeof owner === 'string') return { username: owner };
   return { username: 'ojuri' };
+}
+
+// ---------------------------------------------------------------------------
+// Governance, integrity, knowledge bases
+// ---------------------------------------------------------------------------
+
+/** Claims (knowledge integrity). */
+export function crieClaims(): Claim[] {
+  return valuesOf('crie_claims') as unknown as Claim[];
+}
+
+/** References (bibliography). */
+export function crieReferences(): Reference[] {
+  return valuesOf('crie_references') as unknown as Reference[];
+}
+
+/** Citation contexts. */
+export function crieCitationContexts(): CitationContext[] {
+  return valuesOf('crie_citation_contexts') as unknown as CitationContext[];
+}
+
+/** Literature searches. */
+export function crieLiteratureSearches(): LiteratureSearch[] {
+  return valuesOf('crie_literature_searches') as unknown as LiteratureSearch[];
+}
+
+/** Research gaps. */
+export function crieResearchGaps(): ResearchGap[] {
+  return valuesOf('crie_research_gaps') as unknown as ResearchGap[];
+}
+
+/** Novelty assessments. */
+export function crieNoveltyAssessments(): NoveltyAssessment[] {
+  return valuesOf('crie_novelty_assessments') as unknown as NoveltyAssessment[];
+}
+
+/** Career goals. */
+export function crieCareerGoals(): CareerGoal[] {
+  return valuesOf('crie_career_goals') as unknown as CareerGoal[];
+}
+
+/** Career signals. */
+export function crieCareerSignals(): CareerSignal[] {
+  return valuesOf('crie_career_signals') as unknown as CareerSignal[];
+}
+
+/** Learner states. */
+export function crieLearnerStates(): LearnerState[] {
+  return valuesOf('crie_learner_states') as unknown as LearnerState[];
+}
+
+/** Writing drafts. */
+export function crieWritingDrafts(): WritingDraft[] {
+  return valuesOf('crie_writing_drafts') as unknown as WritingDraft[];
+}
+
+/** Publication plans. */
+export function criePublicationPlans(): PublicationPlan[] {
+  return valuesOf('crie_publication_plans') as unknown as PublicationPlan[];
+}
+
+/** Supervision records. */
+export function crieSupervisionRecords(): SupervisionRecord[] {
+  return valuesOf('crie_supervision_records') as unknown as SupervisionRecord[];
+}
+
+/** Mentorship guidance records. */
+export function crieMentorshipGuidance(): MentorshipGuidance[] {
+  return valuesOf('crie_mentorship_guidance') as unknown as MentorshipGuidance[];
+}
+
+/** Ethics reviews. */
+export function crieEthicsReviews(): EthicsReview[] {
+  return valuesOf('crie_ethics_reviews') as unknown as EthicsReview[];
+}
+
+/** Ethics decisions. */
+export function crieEthicsDecisions(): EthicsDecision[] {
+  return valuesOf('crie_ethics_decisions') as unknown as EthicsDecision[];
+}
+
+/** Context elements (micro-context pool). */
+export function crieContextElements(): ContextElement[] {
+  return valuesOf('crie_context_elements') as unknown as ContextElement[];
+}
+
+// ---------------------------------------------------------------------------
+// Institutions, federation
+// ---------------------------------------------------------------------------
+
+/** The enterprise cognitive model row for the current institution. */
+export function crieEnterpriseModel(): EnterpriseCognitiveModel | undefined {
+  return firstValueOf<EnterpriseCognitiveModel>('crie_enterprise_models');
+}
+
+/** Institutional knowledge assets (IKOS). */
+export function crieInstitutionalAssets(): InstitutionalKnowledgeAsset[] {
+  return valuesOf('crie_institutional_assets') as unknown as InstitutionalKnowledgeAsset[];
+}
+
+/** Federation contracts. */
+export function crieFederationContracts(): FederationContract[] {
+  return valuesOf('crie_federation_contracts') as unknown as FederationContract[];
+}
+
+/** Federation exchanges. */
+export function crieFederationExchanges(): GovernedExchange[] {
+  return valuesOf('crie_federation_exchanges') as unknown as GovernedExchange[];
+}
+
+/** Member sovereignty record for the current institution. */
+export function crieMemberSovereignty(): MemberSovereignty | undefined {
+  return firstValueOf<MemberSovereignty>('crie_member_sovereignty');
 }

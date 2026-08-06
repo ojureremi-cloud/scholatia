@@ -1,16 +1,14 @@
 import type { OrchestrationPlan } from '@/types/crie';
-import { crieAgentsModel } from '../data';
 import { Panel, Stack, Chip, ProgressBar } from '../primitives';
 import { formatNumber, statusTone } from '../format';
 import { AgentTaskList } from './AgentTaskList';
 
 type OrchestrationPlanViewProps = {
-  plan?: OrchestrationPlan;
+  plan: OrchestrationPlan;
 };
 
 export function OrchestrationPlanView({ plan }: OrchestrationPlanViewProps) {
-  const model = crieAgentsModel();
-  const activePlan = plan ?? model.plan;
+  const activePlan = plan;
   const doneCount = activePlan.tasks.filter((task) => task.status === 'done').length;
   const progress = (doneCount / Math.max(1, activePlan.tasks.length)) * 100;
 

@@ -1,3 +1,4 @@
+import { crieClaims, crieEntities, crieEvidence, crieRecommendation, crieSession } from '@/lib/crie/access';
 import { crieReasoningModel } from '@/components/crie/data';
 import { CRIEBreadcrumb, CRIEHeader, CRIELayout, ReasoningCrumb } from '@/components/crie';
 import { ReasoningOverview } from '@/components/crie/reasoning';
@@ -5,7 +6,16 @@ import { ReasoningTraceList } from '@/components/crie/reasoning';
 import { ReasoningConclusions } from '@/components/crie/reasoning';
 
 export default function CRIEReasoningPage() {
-  const model = crieReasoningModel();
+  const entity = crieEntities()[0];
+  const session = crieSession();
+  if (!entity || !session) return null;
+  const model = crieReasoningModel({
+    entity,
+    session,
+    evidenceRecords: crieEvidence(),
+    recommendation: crieRecommendation(),
+    claims: crieClaims(),
+  });
   return (
     <CRIELayout>
       <CRIEBreadcrumb crumbs={[ReasoningCrumb()]} />

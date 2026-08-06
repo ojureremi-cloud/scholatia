@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { crieClaims, crieEntities, crieEvidence, crieRecommendation, crieSession } from '@/lib/crie/access';
 import { crieReasoningModel } from '@/components/crie/data';
 import { CRIEBreadcrumb, CRIEHeader, CRIELayout, ReasoningCrumb } from '@/components/crie';
 import { ReasoningTraceDetail } from '@/components/crie/reasoning';
@@ -6,7 +7,16 @@ import { formatNumber, reasoningParadigmLabel } from '@/components/crie/format';
 
 export default async function CRIEReasoningTracePage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;
-  const model = crieReasoningModel();
+  const entity = crieEntities()[0];
+  const session = crieSession();
+  if (!entity || !session) notFound();
+  const model = crieReasoningModel({
+    entity,
+    session,
+    evidenceRecords: crieEvidence(),
+    recommendation: crieRecommendation(),
+    claims: crieClaims(),
+  });
   const trace = model.traces.find((candidate) => candidate.id === id);
   if (!trace) notFound();
 

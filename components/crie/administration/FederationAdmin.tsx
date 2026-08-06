@@ -1,3 +1,4 @@
+import { crieFederationContracts, crieFederationExchanges, crieMemberSovereignty } from '@/lib/crie/access';
 import { crieFederationModel } from '../data';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
@@ -12,7 +13,15 @@ const EXCHANGE_TONE: Record<string, 'info' | 'success' | 'warning' | 'default'> 
 };
 
 export function FederationAdmin() {
-  const model = crieFederationModel();
+  const sovereignty = crieMemberSovereignty();
+  if (!sovereignty) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No member sovereignty record is registered.</p>;
+  }
+  const model = crieFederationModel({
+    contracts: crieFederationContracts(),
+    exchanges: crieFederationExchanges(),
+    sovereignty,
+  });
 
   const stats: CRIEStat[] = [
     { title: 'Contracts', value: formatNumber(model.statistics.contracts), icon: '🤝' },

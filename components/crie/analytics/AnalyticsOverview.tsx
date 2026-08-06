@@ -1,3 +1,4 @@
+import { crieAnalytics } from '@/lib/crie/access';
 import { crieAnalyticsModel } from '../data';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
@@ -6,7 +7,11 @@ import { formatDateTime, formatNumber, formatPercent } from '../format';
 import { AnalyticsScopeView } from './AnalyticsScopeView';
 
 export function AnalyticsOverview() {
-  const model = crieAnalyticsModel();
+  const researcher = crieAnalytics()[0];
+  if (!researcher) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No analytics snapshots are available.</p>;
+  }
+  const model = crieAnalyticsModel({ researcher });
 
   const stats: CRIEStat[] = [
     { title: 'Researcher', value: formatNumber(model.researcher.indicators.length), icon: '🧑‍🔬' },

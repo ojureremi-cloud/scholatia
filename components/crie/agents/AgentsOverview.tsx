@@ -1,3 +1,4 @@
+import { crieOrchestrationPlan } from '@/lib/crie/access';
 import { crieAgentsModel } from '../data';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
@@ -7,7 +8,11 @@ import { AgentList } from './AgentList';
 import { OrchestrationPlanView } from './OrchestrationPlanView';
 
 export function AgentsOverview() {
-  const model = crieAgentsModel();
+  const plan = crieOrchestrationPlan();
+  if (!plan) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No orchestration plan is active.</p>;
+  }
+  const model = crieAgentsModel(plan);
 
   const stats: CRIEStat[] = [
     { title: 'Agents', value: formatNumber(model.agents.length), icon: '🤖' },
@@ -36,7 +41,7 @@ export function AgentsOverview() {
         <AgentList agents={model.agents} />
       </Panel>
 
-      <OrchestrationPlanView />
+      <OrchestrationPlanView plan={plan} />
     </Stack>
   );
 }

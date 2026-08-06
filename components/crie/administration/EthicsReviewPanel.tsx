@@ -1,4 +1,4 @@
-import { crieSettingsModel } from '../data';
+import { crieEthicsDecisions, crieEthicsReviews } from '@/lib/crie/access';
 import { Panel, Stack, Chip, ConfidenceMeter } from '../primitives';
 import { statusTone } from '../format';
 
@@ -10,8 +10,11 @@ const VERDICT_TONE: Record<string, 'success' | 'warning' | 'danger' | 'info'> = 
 };
 
 export function EthicsReviewPanel() {
-  const model = crieSettingsModel();
-  const { ethicsReview, ethicsDecision } = model;
+  const ethicsReview = crieEthicsReviews()[0];
+  const ethicsDecision = crieEthicsDecisions()[0];
+  if (!ethicsReview || !ethicsDecision) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No ethics review is on record.</p>;
+  }
 
   return (
     <Stack>

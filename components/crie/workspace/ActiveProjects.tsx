@@ -1,13 +1,17 @@
 'use client';
 
-import useCRIE from '@/hooks/useCRIE';
+import type { ResearchEntity } from '@/types/crie';
 import Link from 'next/link';
 import { entityKindLabel, entityKindIcon, formatRelative, lifecycleStageLabel, projectUrl, researchEntityUrl } from '../format';
 import { ProgressBar, Chip } from '../primitives';
 import { entityStageProgress } from '../data';
 
-export function ActiveProjects() {
-  const { researchEntities } = useCRIE();
+type ActiveProjectsProps = {
+  entities: ResearchEntity[];
+};
+
+export function ActiveProjects({ entities }: ActiveProjectsProps) {
+  const researchEntities = entities;
   const own = researchEntities.filter((entity) => entity.owner.username === 'ojuri');
   const others = researchEntities.filter((entity) => entity.owner.username !== 'ojuri');
 

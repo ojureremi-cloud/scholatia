@@ -1,53 +1,66 @@
 import type {
   AgentId,
+  CareerGoal,
+  CareerSignal,
+  Citation,
+  CitationContext,
+  Claim,
+  ContextPack,
   DecisionCapability,
+  EnterpriseCognitiveModel,
+  EthicsDecision,
+  EthicsReview,
+  FederationContract,
+  GovernedExchange,
+  InstitutionalKnowledgeAsset,
+  KnowledgeGraph,
+  LearnerState,
   LifecycleStageId,
+  LiteratureSearch,
+  MemberSovereignty,
+  MemoryItem,
   MemoryTypeId,
+  MentorshipGuidance,
+  NoveltyAssessment,
   OrchestrationPlan,
   OrchestrationTask,
+  PublicationPlan,
   ReasoningParadigm,
   ReasoningTrace,
+  Recommendation,
+  Reference,
+  ResearchAnalytics,
   ResearchEntity,
+  ResearchGap,
+  ResearchSession,
+  SupervisionRecord,
+  WritingDraft,
 } from '@/types/crie';
-import {
-  CRIE_ANALYTICS_STATISTICS,
-  CRIE_CAREER_GOAL,
-  CRIE_CAREER_SIGNAL,
-  CRIE_CAREER_STATISTICS,
-  CRIE_CITATION_STATISTICS,
-  CRIE_CLAIM_STATISTICS,
-  CRIE_CONTEXT_STATISTICS,
-  CRIE_ENTITIES,
-  CRIE_ETHICS_REVIEW,
-  CRIE_ETHICS_DECISION,
-  CRIE_ETHICS_STATISTICS,
-  CRIE_EVIDENCE_1,
-  CRIE_GRAPH_STATISTICS,
-  CRIE_KNOWLEDGE_GRAPH,
-  CRIE_LEARNER_STATISTICS,
-  CRIE_LIFECYCLE_STATISTICS,
-  CRIE_LITERATURE_STATISTICS,
-  CRIE_MEMORY_ITEMS,
-  CRIE_MENTORSHIP_STATISTICS,
-  CRIE_ORCHESTRATION_PLAN,
-  CRIE_POLICY_STATISTICS,
-  CRIE_PUBLICATION_STATISTICS,
-  CRIE_RECOMMENDATION,
-  CRIE_RECOMMENDATION_STATISTICS,
-  CRIE_RESEARCH_ANALYTICS,
-  CRIE_RESEARCH_ENTITY_STATISTICS,
-  CRIE_SESSION,
-  CRIE_SESSION_STATISTICS,
-  CRIE_SUPERVISION_STATISTICS,
-  CRIE_WRITING_STATISTICS,
-} from '@/constants/placeholder-crie';
-import { RESEARCHERS } from '@/constants/placeholder-researchers';
+import type { PolicyStatistics } from '@/lib/crie/policy';
 import { analyticsIndicator, analyticsStatistics, researchAnalytics, rollup } from '@/lib/crie/analytics';
 import { awaitingApproval, failedTasks, orchestrationStatistics, oversightView, runningTasks } from '@/lib/crie/agent-coordinator';
-import { stageCoverage } from '@/lib/crie/lifecycle';
+import { careerStatistics } from '@/lib/crie/career';
+import { citationStatistics } from '@/lib/crie/citation';
+import { contextStatistics } from '@/lib/crie/context';
+import { claimStatistics } from '@/lib/crie/evidence';
+import { ethicsStatistics } from '@/lib/crie/ethics';
+import { federationStatistics } from '@/lib/crie/federation';
+import { institutionStatistics } from '@/lib/crie/institution';
+import { graphStatistics } from '@/lib/crie/knowledge-graph';
+import { learnerStatistics } from '@/lib/crie/learning';
+import { lifecycleStatistics, stageCoverage } from '@/lib/crie/lifecycle';
+import { literatureStatistics } from '@/lib/crie/literature';
 import { memoryStatistics, recallByType } from '@/lib/crie/memory';
+import { mentorshipStatistics } from '@/lib/crie/mentorship';
 import { checkPolicy, policyStatistics, DEFAULT_CRIE_POLICIES } from '@/lib/crie/policy';
+import { publicationStatistics } from '@/lib/crie/publication';
 import { createReasoningTrace, reasoningStatistics, reasoningStep, reasoningTraceId } from '@/lib/crie/reasoning';
+import { recommendationStatistics } from '@/lib/crie/recommendations';
+import { researchEntityStatistics } from '@/lib/crie/research-intelligence';
+import { sessionStatistics } from '@/lib/crie/session';
+import { supervisionStatistics } from '@/lib/crie/supervision';
+import { deriveEntityTrust, deriveRelationTrust, trustStatistics } from '@/lib/crie/trust';
+import { writingStatistics } from '@/lib/crie/writing';
 import {
   addOption,
   bestOption,
@@ -59,48 +72,48 @@ import {
   rankOptions,
   recordDecision,
 } from '@/lib/crie/decision';
-import { deriveEntityTrust, deriveRelationTrust, trustStatistics } from '@/lib/crie/trust';
-import { createEnterpriseCognitiveModel, createInstitutionalAsset, institutionStatistics } from '@/lib/crie/institution';
-import {
-  createFederationContract,
-  createGovernedExchange,
-  createMemberSovereignty,
-  federationStatistics,
-} from '@/lib/crie/federation';
 import { searchGraph, searchStatistics } from '@/lib/crie/search';
 import { confidence } from '@/lib/crie/utils';
 import { agentLabel } from './format';
 
 const CURRENT_USERNAME = 'ojuri';
 
-const currentUserRef = () => {
-  const profile = RESEARCHERS.find((researcher) => researcher.username === CURRENT_USERNAME);
-  return { username: CURRENT_USERNAME, name: profile?.displayName };
-};
+const currentUserRef = () => ({ username: CURRENT_USERNAME });
 
 // ---------------------------------------------------------------------------
 // Overview
 // ---------------------------------------------------------------------------
 
-export function crieOverviewModel() {
-  const ownEntities = CRIE_ENTITIES.filter((entity) => entity.owner.username === CURRENT_USERNAME);
+export type CRIEOverviewInputs = {
+  entities: readonly ResearchEntity[];
+  graph: KnowledgeGraph;
+  memoryItems: readonly MemoryItem[];
+  contextPacks: readonly ContextPack[];
+  analyticsRecords: readonly ResearchAnalytics[];
+  sessions: readonly ResearchSession[];
+  recommendations: readonly Recommendation[];
+};
+
+export function crieOverviewModel(inputs: CRIEOverviewInputs) {
+  const { entities, graph, memoryItems, contextPacks, analyticsRecords, sessions, recommendations } = inputs;
+  const ownEntities = entities.filter((entity) => entity.owner.username === CURRENT_USERNAME);
   const activeEntities = ownEntities.filter((entity) => {
     const index = ['idea', 'problem', 'objectives', 'questions', 'hypotheses', 'literature', 'framework', 'methodology', 'instrument', 'analysis', 'interpretation', 'publication'].indexOf(entity.model.stage);
     return index < 11;
   });
   return {
     researcher: currentUserRef(),
-    entities: CRIE_ENTITIES,
+    entities,
     ownEntities,
     activeEntities,
-    entityStatistics: CRIE_RESEARCH_ENTITY_STATISTICS,
-    lifecycleStatistics: CRIE_LIFECYCLE_STATISTICS,
-    sessionStatistics: CRIE_SESSION_STATISTICS,
-    contextStatistics: CRIE_CONTEXT_STATISTICS,
-    graphStatistics: CRIE_GRAPH_STATISTICS,
-    memoryStatistics: memoryStatistics(CRIE_MEMORY_ITEMS),
-    analyticsStatistics: CRIE_ANALYTICS_STATISTICS,
-    recommendationStatistics: CRIE_RECOMMENDATION_STATISTICS,
+    entityStatistics: researchEntityStatistics(entities),
+    lifecycleStatistics: lifecycleStatistics(entities),
+    sessionStatistics: sessionStatistics(sessions),
+    contextStatistics: contextStatistics(contextPacks),
+    graphStatistics: graphStatistics(graph),
+    memoryStatistics: memoryStatistics(memoryItems),
+    analyticsStatistics: analyticsStatistics(analyticsRecords),
+    recommendationStatistics: recommendationStatistics(recommendations),
   };
 }
 
@@ -108,15 +121,23 @@ export function crieOverviewModel() {
 // Research workspace
 // ---------------------------------------------------------------------------
 
-export function crieWorkspaceModel() {
-  const current = CRIE_ENTITIES.find((entity) => entity.owner.username === CURRENT_USERNAME) ?? CRIE_ENTITIES[0];
-  const otherEntities = CRIE_ENTITIES.filter((entity) => entity.id !== current.id);
+export type CRIEWorkspaceInputs = {
+  entities: readonly ResearchEntity[];
+  session: ResearchSession;
+  recommendation?: Recommendation;
+};
+
+export function crieWorkspaceModel(inputs: CRIEWorkspaceInputs) {
+  const { entities, session, recommendation } = inputs;
+  const current = entities.find((entity) => entity.owner.username === CURRENT_USERNAME) ?? entities[0];
+  const otherEntities = entities.filter((entity) => entity.id !== current.id);
+  const recommendations = recommendation ? [recommendation] : [];
   return {
     current,
     otherEntities,
-    session: CRIE_SESSION,
-    recommendations: [CRIE_RECOMMENDATION],
-    recommendationStatistics: CRIE_RECOMMENDATION_STATISTICS,
+    session,
+    recommendations,
+    recommendationStatistics: recommendationStatistics(recommendations),
   };
 }
 
@@ -128,17 +149,26 @@ export function entityStageProgress(entity: ResearchEntity): number {
 // Reasoning
 // ---------------------------------------------------------------------------
 
-export function crieReasoningModel() {
-  const entity = CRIE_ENTITIES.find((candidate) => candidate.owner.username === CURRENT_USERNAME) ?? CRIE_ENTITIES[0];
+export type CRIEReasoningInputs = {
+  entity: ResearchEntity;
+  session: ResearchSession;
+  evidenceRecords: readonly { id: string }[];
+  recommendation?: Recommendation;
+  claims: readonly Claim[];
+};
+
+export function crieReasoningModel(inputs: CRIEReasoningInputs) {
+  const { entity, session, evidenceRecords, recommendation, claims } = inputs;
+  const firstEvidence = evidenceRecords[0];
   const traces: ReasoningTrace[] = [
     {
       ...createReasoningTrace({
         researchEntityId: entity.id,
-        sessionId: CRIE_SESSION.id,
+        sessionId: session.id,
         paradigm: 'educational',
         steps: [
           reasoningStep(1, 'premise', 'Two literature gaps are confirmed for this entity.'),
-          reasoningStep(2, 'evidence-lookup', 'Gap assessment binds to evidence records.', [CRIE_EVIDENCE_1.id]),
+          reasoningStep(2, 'evidence-lookup', 'Gap assessment binds to evidence records.', firstEvidence ? [firstEvidence.id] : []),
           reasoningStep(3, 'inference', 'A mixed-methods design addresses both gaps.'),
           reasoningStep(4, 'validation', 'Novelty assessment confirms the framing.'),
         ],
@@ -157,7 +187,7 @@ export function crieReasoningModel() {
         paradigm: 'research',
         steps: [
           reasoningStep(1, 'premise', 'Claim: collaboration increases citation impact.'),
-          reasoningStep(2, 'evidence-lookup', 'Reference evidence supports the claim.', [CRIE_EVIDENCE_1.id]),
+          reasoningStep(2, 'evidence-lookup', 'Reference evidence supports the claim.', firstEvidence ? [firstEvidence.id] : []),
           reasoningStep(3, 'validation', 'Contradiction severity is minor; not refuted.'),
         ],
         conclusion: {
@@ -173,8 +203,8 @@ export function crieReasoningModel() {
   return {
     traces,
     statistics: reasoningStatistics(traces),
-    claimStatistics: CRIE_CLAIM_STATISTICS,
-    recommendation: CRIE_RECOMMENDATION,
+    claimStatistics: claimStatistics(claims),
+    recommendation,
   };
 }
 
@@ -219,10 +249,10 @@ export function crieDecisionModel() {
 // Knowledge graph
 // ---------------------------------------------------------------------------
 
-export function crieGraphModel() {
+export function crieGraphModel(graph: KnowledgeGraph) {
   return {
-    graph: CRIE_KNOWLEDGE_GRAPH,
-    statistics: CRIE_GRAPH_STATISTICS,
+    graph,
+    statistics: graphStatistics(graph),
   };
 }
 
@@ -230,23 +260,22 @@ export function crieGraphModel() {
 // Memory
 // ---------------------------------------------------------------------------
 
-export function crieMemoryModel() {
+export function crieMemoryModel(items: readonly MemoryItem[]) {
   return {
-    items: CRIE_MEMORY_ITEMS,
-    statistics: memoryStatistics(CRIE_MEMORY_ITEMS),
+    items,
+    statistics: memoryStatistics(items),
   };
 }
 
-export function memoryByType(type: MemoryTypeId) {
-  return recallByType(CRIE_MEMORY_ITEMS, type);
+export function memoryByType(items: readonly MemoryItem[], type: MemoryTypeId) {
+  return recallByType(items, type);
 }
 
 // ---------------------------------------------------------------------------
 // Agents
 // ---------------------------------------------------------------------------
 
-export function crieAgentsModel() {
-  const plan = CRIE_ORCHESTRATION_PLAN;
+export function crieAgentsModel(plan: OrchestrationPlan) {
   const agentIds = [
     ...new Set(plan.tasks.map((task) => task.agentId).filter((id): id is AgentId => Boolean(id))),
   ];
@@ -280,7 +309,12 @@ export function crieAgentModel(plan: OrchestrationPlan, agentId: string) {
 // Analytics
 // ---------------------------------------------------------------------------
 
-export function crieAnalyticsModel() {
+export type CRIEAnalyticsInputs = {
+  researcher: ResearchAnalytics;
+};
+
+export function crieAnalyticsModel(inputs: CRIEAnalyticsInputs) {
+  const { researcher } = inputs;
   const institution = researchAnalytics({
     scope: 'institution',
     scopeId: 'INST-UI-001',
@@ -300,43 +334,72 @@ export function crieAnalyticsModel() {
       analyticsIndicator('openAccessRate', 0.6, 1, 0.8),
     ],
   });
-  const global = rollup([CRIE_RESEARCH_ANALYTICS, institution, enterprise], 'global', 'ecosystem');
+  const global = rollup([researcher, institution, enterprise], 'global', 'ecosystem');
   return {
-    researcher: CRIE_RESEARCH_ANALYTICS,
+    researcher,
     institution,
     enterprise,
     global,
-    researcherStats: analyticsStatistics([CRIE_RESEARCH_ANALYTICS]),
+    researcherStats: analyticsStatistics([researcher]),
     institutionStats: analyticsStatistics([institution]),
     enterpriseStats: analyticsStatistics([enterprise]),
     globalStats: analyticsStatistics([global]),
   };
 }
 
-export function crieProductivityModel() {
+export type CRIEProductivityInputs = {
+  entities: readonly ResearchEntity[];
+  writingDrafts: readonly WritingDraft[];
+  learnerStates: readonly LearnerState[];
+  publicationPlans: readonly PublicationPlan[];
+};
+
+export function crieProductivityModel(inputs: CRIEProductivityInputs) {
+  const { entities, writingDrafts, learnerStates, publicationPlans } = inputs;
   return {
-    lifecycleStatistics: CRIE_LIFECYCLE_STATISTICS,
-    writingStatistics: CRIE_WRITING_STATISTICS,
-    learnerStatistics: CRIE_LEARNER_STATISTICS,
-    publicationStatistics: CRIE_PUBLICATION_STATISTICS,
+    lifecycleStatistics: lifecycleStatistics(entities),
+    writingStatistics: writingStatistics(writingDrafts),
+    learnerStatistics: learnerStatistics(learnerStates),
+    publicationStatistics: publicationStatistics(publicationPlans),
   };
 }
 
-export function crieImpactModel() {
+export type CRIEImpactInputs = {
+  analytics: ResearchAnalytics;
+  references: readonly Reference[];
+  citations: readonly Citation[];
+  citationContexts: readonly CitationContext[];
+  literatureSearches: readonly LiteratureSearch[];
+  researchGaps: readonly ResearchGap[];
+  noveltyAssessments: readonly NoveltyAssessment[];
+  careerGoals: readonly CareerGoal[];
+  careerSignals: readonly CareerSignal[];
+};
+
+export function crieImpactModel(inputs: CRIEImpactInputs) {
+  const { analytics, references, citations, citationContexts, literatureSearches, researchGaps, noveltyAssessments, careerGoals, careerSignals } = inputs;
   return {
-    analytics: CRIE_RESEARCH_ANALYTICS,
-    citationStatistics: CRIE_CITATION_STATISTICS,
-    literatureStatistics: CRIE_LITERATURE_STATISTICS,
-    careerStatistics: CRIE_CAREER_STATISTICS,
+    analytics,
+    citationStatistics: citationStatistics(references, citations, citationContexts),
+    literatureStatistics: literatureStatistics(literatureSearches, researchGaps, noveltyAssessments),
+    careerStatistics: careerStatistics(careerGoals, [], careerSignals),
   };
 }
 
-export function crieCollaborationModel() {
+export type CRIECollaborationInputs = {
+  careerGoal: CareerGoal;
+  careerSignal: CareerSignal;
+  supervisionRecords: readonly SupervisionRecord[];
+  mentorshipGuidance: readonly MentorshipGuidance[];
+};
+
+export function crieCollaborationModel(inputs: CRIECollaborationInputs) {
+  const { careerGoal, careerSignal, supervisionRecords, mentorshipGuidance } = inputs;
   return {
-    careerGoal: CRIE_CAREER_GOAL,
-    careerSignal: CRIE_CAREER_SIGNAL,
-    supervisionStatistics: CRIE_SUPERVISION_STATISTICS,
-    mentorshipStatistics: CRIE_MENTORSHIP_STATISTICS,
+    careerGoal,
+    careerSignal,
+    supervisionStatistics: supervisionStatistics(supervisionRecords),
+    mentorshipStatistics: mentorshipStatistics(mentorshipGuidance),
   };
 }
 
@@ -353,9 +416,9 @@ export function criePolicyModel() {
   };
 }
 
-export function crieTrustModel() {
-  const entityScores = CRIE_KNOWLEDGE_GRAPH.entities.map((entity) => deriveEntityTrust(entity));
-  const relationScores = CRIE_KNOWLEDGE_GRAPH.relations.map((relation) => deriveRelationTrust(relation));
+export function crieTrustModel(graph: KnowledgeGraph) {
+  const entityScores = graph.entities.map((entity) => deriveEntityTrust(entity));
+  const relationScores = graph.relations.map((relation) => deriveRelationTrust(relation));
   const scores = [...entityScores, ...relationScores];
   return {
     entityScores,
@@ -365,43 +428,18 @@ export function crieTrustModel() {
   };
 }
 
-export function crieInstitutionModel() {
-  const model = createEnterpriseCognitiveModel({
-    label: 'ui-enterprise',
-    institutionId: 'INST-UI-001',
-    strategicGoals: ['Strengthen research intelligence', 'Grow open science infrastructure'],
-    strengthAreas: ['Collaborative research', 'Research computing'],
-    researchEntityIds: CRIE_ENTITIES.map((entity) => entity.id),
-  });
-  const assets = [
-    createInstitutionalAsset({
-      label: 'ui-dataset-catalogue',
-      institutionId: 'INST-UI-001',
-      assetKind: 'dataset',
-      title: 'Research dataset catalogue',
-      accessClass: 'public',
-      consentScope: ['research-analytics'],
-      curator: 'ojuri',
-    }),
-    createInstitutionalAsset({
-      label: 'ui-methods-curriculum',
-      institutionId: 'INST-UI-001',
-      assetKind: 'curriculum',
-      title: 'Graduate research methods curriculum',
-      accessClass: 'institution',
-      consentScope: ['learning-signals'],
-      curator: 'adebayo',
-    }),
-    createInstitutionalAsset({
-      label: 'ui-institutional-repository',
-      institutionId: 'INST-UI-001',
-      assetKind: 'repository',
-      title: 'Institutional repository',
-      accessClass: 'public',
-      consentScope: ['federation'],
-      curator: 'library',
-    }),
-  ];
+export type CRIEInstitutionInputs = {
+  entities: readonly ResearchEntity[];
+  enterprise: EnterpriseCognitiveModel;
+  assets: readonly InstitutionalKnowledgeAsset[];
+};
+
+export function crieInstitutionModel(inputs: CRIEInstitutionInputs) {
+  const { entities, enterprise, assets } = inputs;
+  const model: EnterpriseCognitiveModel = {
+    ...enterprise,
+    researchEntityIds: entities.map((entity) => entity.id),
+  };
   return {
     model,
     assets,
@@ -409,55 +447,14 @@ export function crieInstitutionModel() {
   };
 }
 
-export function crieFederationModel() {
-  const contracts = [
-    createFederationContract({
-      label: 'ui-lagos-agreement',
-      institutionId: 'INST-UI-001',
-      memberInstitutionId: 'INST-UNILAG-002',
-      contractType: 'aggregate-analytics',
-      dataScope: ['Aggregate publication analytics'],
-      consentScope: ['federation'],
-      sovereigntyClauses: ['No raw researcher data', 'Opt-in only', 'Aggregate results only'],
-      status: 'active',
-    }),
-    createFederationContract({
-      label: 'ui-knust-agreement',
-      institutionId: 'INST-UI-001',
-      memberInstitutionId: 'INST-KNUST-003',
-      contractType: 'knowledge-exchange',
-      dataScope: ['Public knowledge graph entities'],
-      consentScope: ['federation'],
-      sovereigntyClauses: ['Public entities only', 'Per-item consent'],
-      status: 'negotiating',
-    }),
-  ];
-  const exchanges = [
-    createGovernedExchange({
-      label: 'ui-agg-2026-q3',
-      federationContractId: contracts[0].id,
-      exchangeType: 'aggregate',
-      payloadRef: 'analytics-rollup-2026-q3',
-      consentScope: ['federation'],
-      confidenceValue: 0.8,
-    }),
-    createGovernedExchange({
-      label: 'ui-kg-signal-2026-08',
-      federationContractId: contracts[0].id,
-      exchangeType: 'signal',
-      payloadRef: 'graph-signal-2026-08',
-      consentScope: ['federation'],
-      confidenceValue: 0.7,
-    }),
-  ];
-  const sovereignty = createMemberSovereignty({
-    label: 'ui-sovereignty',
-    institutionId: 'INST-UI-001',
-    governingContractIds: contracts.map((contract) => contract.id),
-    reservedRights: ['Revoke consent at any time', 'Withdraw from any exchange'],
-    sharedSignals: ['Aggregate analytics', 'Public graph entities'],
-    neverShared: ['Private memory', 'Raw researcher data'],
-  });
+export type CRIEFederationInputs = {
+  contracts: readonly FederationContract[];
+  exchanges: readonly GovernedExchange[];
+  sovereignty: MemberSovereignty;
+};
+
+export function crieFederationModel(inputs: CRIEFederationInputs) {
+  const { contracts, exchanges, sovereignty } = inputs;
   return {
     contracts,
     exchanges,
@@ -470,20 +467,27 @@ export function crieFederationModel() {
 // Search
 // ---------------------------------------------------------------------------
 
-export function crieSearchModel(query: string) {
-  const results = searchGraph(CRIE_KNOWLEDGE_GRAPH, query);
+export function crieSearchModel(graph: KnowledgeGraph, query: string) {
+  const results = searchGraph(graph, query);
   return {
     results,
     statistics: searchStatistics([results]),
   };
 }
 
-export function crieSettingsModel() {
+export type CRIESettingsInputs = {
+  ethicsReview: EthicsReview;
+  ethicsDecision: EthicsDecision;
+  policyStatistics: PolicyStatistics;
+};
+
+export function crieSettingsModel(inputs: CRIESettingsInputs) {
+  const { ethicsReview, ethicsDecision, policyStatistics } = inputs;
   return {
-    ethicsReview: CRIE_ETHICS_REVIEW,
-    ethicsDecision: CRIE_ETHICS_DECISION,
-    ethicsStatistics: CRIE_ETHICS_STATISTICS,
-    policyStatistics: CRIE_POLICY_STATISTICS,
+    ethicsReview,
+    ethicsDecision,
+    ethicsStatistics: ethicsStatistics([ethicsReview], [ethicsDecision]),
+    policyStatistics,
     consentScopes: ['research-analytics', 'learning-signals', 'memory', 'context', 'digital-twin', 'federation', 'career', 'publication-assist', 'grant-assist'] as const,
   };
 }

@@ -1,19 +1,9 @@
-import {
-  CRIE_CLAIM_1,
-  CRIE_CLAIM_2,
-  CRIE_CLAIM_STATISTICS,
-  CRIE_CONTRADICTION,
-  CRIE_EVIDENCE_1,
-  CRIE_EVIDENCE_2,
-  CRIE_EVIDENCE_ASSESSMENTS,
-} from '@/constants/placeholder-crie';
+import { crieClaims, crieContradictions, crieEvidence, crieEvidenceAssessments } from '@/lib/crie/access';
+import { claimStatistics } from '@/lib/crie/evidence';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
 import { Chip, ConfidenceMeter, Panel, Stack } from '../primitives';
 import { confidenceTone, formatNumber, formatPercent } from '../format';
-
-const CLAIMS = [CRIE_CLAIM_1, CRIE_CLAIM_2];
-const EVIDENCE = [CRIE_EVIDENCE_1, CRIE_EVIDENCE_2];
 
 const VERDICT_TONE: Record<string, 'success' | 'danger' | 'warning' | 'default'> = {
   supports: 'success',
@@ -23,11 +13,17 @@ const VERDICT_TONE: Record<string, 'success' | 'danger' | 'warning' | 'default'>
 };
 
 export function EvidenceViewer() {
+  const claims = crieClaims();
+  const evidence = crieEvidence();
+  const assessments = crieEvidenceAssessments();
+  const contradiction = crieContradictions()[0];
+  const claimStats = claimStatistics(claims, assessments);
+
   const stats: CRIEStat[] = [
-    { title: 'Claims', value: formatNumber(CRIE_CLAIM_STATISTICS.total), icon: '💬' },
-    { title: 'Supported', value: formatNumber(CRIE_CLAIM_STATISTICS.supported), icon: '✅' },
-    { title: 'Refuted', value: formatNumber(CRIE_CLAIM_STATISTICS.refuted), icon: '❌' },
-    { title: 'Avg confidence', value: formatPercent(CRIE_CLAIM_STATISTICS.averageConfidence), icon: '📏' },
+    { title: 'Claims', value: formatNumber(claimStats.total), icon: '💬' },
+    { title: 'Supported', value: formatNumber(claimStats.supported), icon: '✅' },
+    { title: 'Refuted', value: formatNumber(claimStats.refuted), icon: '❌' },
+    { title: 'Avg confidence', value: formatPercent(claimStats.averageConfidence), icon: '📏' },
   ];
 
   return (
@@ -35,8 +31,8 @@ export function EvidenceViewer() {
       <CRIEStats stats={stats} />
 
       <div className="grid gap-8 lg:grid-cols-2">
-        {CLAIMS.map((claim) => {
-          const assessments = CRIE_EVIDENCE_ASSESSMENTS.filter((assessment) => assessment.claimId === claim.id);
+        {claims.map((claim) => {
+          const claimAssessments = assessments.filter((assessment) => assessment.claimId === claim.id);
           return (
             <Panel key={claim.id} eyebrow="Claim" title={claim.statement} icon="💬">
               <div className="flex flex-wrap gap-2">
@@ -47,8 +43,8 @@ export function EvidenceViewer() {
                 <ConfidenceMeter confidence={claim.confidence} />
               </div>
               <ul className="mt-4 space-y-2">
-                {assessments.map((assessment) => {
-                  const record = EVIDENCE.find((candidate) => candidate.id === assessment.evidenceRecordId);
+                {claimAssessments.map((assessment) => {
+                  const record = evidence.find((candidate) => candidate.id === assessment.evidenceRecordId);
                   return (
                     <li key={`${assessment.claimId}-${assessment.evidenceRecordId}`} className="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
                       <div className="min-w-0">
@@ -71,7 +67,7 @@ export function EvidenceViewer() {
       <div className="grid gap-8 lg:grid-cols-[1fr_20rem]">
         <Panel eyebrow="Evidence records" title="Supporting records" icon="🧾">
           <ul className="space-y-3">
-            {EVIDENCE.map((record) => (
+            {evidence.map((record) => (
               <li key={record.id} className="rounded-2xl bg-slate-50 px-4 py-3 dark:bg-slate-800">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -87,17 +83,23 @@ export function EvidenceViewer() {
           </ul>
         </Panel>
 
-        <Panel eyebrow="Contradiction" title={CRIE_CONTRADICTION.id} icon="⚖️">
-          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Claim A <span className="font-semibold text-slate-900 dark:text-slate-100">{CRIE_CONTRADICTION.claimA}</span>
-          </p>
-          <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
-            Claim B <span className="font-semibold text-slate-900 dark:text-slate-100">{CRIE_CONTRADICTION.claimB}</span>
-          </p>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Chip tone="warning">Severity: {CRIE_CONTRADICTION.severity}</Chip>
-            <Chip>State: {CRIE_CONTRADICTION.resolutionState}</Chip>
-          </div>
+        <Panel eyebrow="Contradiction" title={contradiction?.id ?? 'None'} icon="⚖️">
+          {contradiction ? (
+            <>
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Claim A <span className="font-semibold text-slate-900 dark:text-slate-100">{contradiction.claimA}</span>
+              </p>
+              <p className="text-sm leading-6 text-slate-600 dark:text-slate-300">
+                Claim B <span className="font-semibold text-slate-900 dark:text-slate-100">{contradiction.claimB}</span>
+              </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Chip tone="warning">Severity: {contradiction.severity}</Chip>
+                <Chip>State: {contradiction.resolutionState}</Chip>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">No contradiction is on record.</p>
+          )}
         </Panel>
       </div>
     </Stack>

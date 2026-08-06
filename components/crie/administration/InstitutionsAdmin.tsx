@@ -1,3 +1,4 @@
+import { crieEntities, crieEnterpriseModel, crieInstitutionalAssets } from '@/lib/crie/access';
 import { crieInstitutionModel } from '../data';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
@@ -15,7 +16,15 @@ const ASSET_ICONS: Record<string, string> = {
 };
 
 export function InstitutionsAdmin() {
-  const model = crieInstitutionModel();
+  const enterprise = crieEnterpriseModel();
+  if (!enterprise) {
+    return <p className="text-sm text-slate-500 dark:text-slate-400">No enterprise cognitive model is registered.</p>;
+  }
+  const model = crieInstitutionModel({
+    entities: crieEntities(),
+    enterprise,
+    assets: crieInstitutionalAssets(),
+  });
 
   const stats: CRIEStat[] = [
     { title: 'Models', value: formatNumber(model.statistics.models), icon: '🏛️' },
