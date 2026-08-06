@@ -3657,3 +3657,1348 @@ CREATE TABLE group_media (
 );
 
 CREATE INDEX idx_group_media_group ON group_media (group_id);
+
+-- ============================================================================
+-- CRIE Foundation (Mission 004-D Wave 2 — Groups 1 & 2)
+-- Mirrors the TypeScript models in `types/crie/*` and the Wave-2 pure engines
+-- in `lib/crie/*`. CRIE tables use the `crie_` prefix, UUID primary keys, and
+-- a stable `crie_id` column holding the canonical CRIE graph identifier that
+-- the engines generate (prefix-slug pattern); `crie_id` is UNIQUE but the PK
+-- remains UUID so rows never collide. Canonical researchers and institutions
+-- are referenced by username / institution id as on the rest of the platform.
+-- Group 1 = core (identity, entity lifecycle, session, context, workspace,
+-- memory, decision). Group 2 = derived intelligence (trust, search,
+-- institution, federation). All records carry `created_at`/`updated_at`
+-- TIMESTAMPTZ audit fields; entity-like records are soft-deleted via
+-- `deleted_at` and versioned via `version`.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- crie_entities
+-- A cognitive research entity: the root cognitive object of CRIE (Ch. 3),
+-- typed and staged on the 14-stage lifecycle spine (Ch. 8).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_entities (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  entity_type   TEXT NOT NULL CHECK (entity_type IN (
+                'project','study','thesis','paper','grant-programme','patent','innovation'
+              )),
+  title         TEXT NOT NULL,
+  description   TEXT,
+  owner         TEXT NOT NULL,
+  owner_name    TEXT,
+  discipline    TEXT,
+  stage         TEXT NOT NULL CHECK (stage IN (
+                'idea','problem','objectives','questions','hypotheses','literature',
+                'framework','methodology','instrument','analysis','interpretation',
+                'publication','impact','preservation'
+              )),
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_entities_owner ON crie_entities (owner);
+CREATE INDEX idx_crie_entities_type ON crie_entities (entity_type);
+CREATE INDEX idx_crie_entities_stage ON crie_entities (stage);
+
+-- ---------------------------------------------------------------------------
+-- crie_entity_stages
+-- A versioned snapshot of an entity's stage + status-vector progress.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_entity_stages (
+  id           UUID NOT NULL DEFAULT gen_random_uuid(),
+  entity_id    UUID NOT NULL REFERENCES crie_entities (id) ON DELETE CASCADE,
+  stage        TEXT NOT NULL CHECK (stage IN (
+               'idea','problem','objectives','questions','hypotheses','literature',
+               'framework','methodology','instrument','analysis','interpretation',
+               'publication','impact','preservation'
+             )),
+  progress     NUMERIC NOT NULL DEFAULT 0 CHECK (progress >= 0 AND progress <= 1),
+  version      INTEGER NOT NULL DEFAULT 1,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_entity_stages_entity ON crie_entity_stages (entity_id);
+CREATE INDEX idx_crie_entity_stages_stage ON crie_entity_stages (stage);
+
+-- ---------------------------------------------------------------------------
+-- crie_stage_transitions
+-- An audited lifecycle transition between two stages (forward/revert/loop).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_stage_transitions (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  entity_id     UUID NOT NULL REFERENCES crie_entities (id) ON DELETE CASCADE,
+  from_stage    TEXT NOT NULL CHECK (from_stage IN (
+                'idea','problem','objectives','questions','hypotheses','literature',
+                'framework','methodology','instrument','analysis','interpretation',
+                'publication','impact','preservation'
+              )),
+  to_stage      TEXT NOT NULL CHECK (to_stage IN (
+                'idea','problem','objectives','questions','hypotheses','literature',
+                'framework','methodology','instrument','analysis','interpretation',
+                'publication','impact','preservation'
+              )),
+  transition_type TEXT NOT NULL CHECK (transition_type IN ('forward','revert','loop')),
+  note          TEXT,
+  transitioned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_stage_transitions_entity ON crie_stage_transitions (entity_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_said_identities
+-- Identity engine: a CRIE principal bound to a canonical SAID hash. Reuses the
+-- platform identity layer (`lib/auth` + `lib/said.ts`); never duplicates auth.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_said_identities (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  principal_kind TEXT NOT NULL CHECK (principal_kind IN (
+                'researcher','institution','system','agent','service'
+              )),
+  principal_id  TEXT NOT NULL,
+  principal_name TEXT,
+  said_hash     TEXT NOT NULL,
+  verified      BOOLEAN NOT NULL DEFAULT FALSE,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_said_identities_principal ON crie_said_identities (principal_kind, principal_id);
+CREATE INDEX idx_crie_said_identities_said ON crie_said_identities (said_hash);
+
+-- ---------------------------------------------------------------------------
+-- crie_sessions
+-- A goal-directed temporal envelope of researcher–CRIE interaction (Ch. 6).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_sessions (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  researcher    TEXT NOT NULL,
+  researcher_name TEXT,
+  entity_id     UUID REFERENCES crie_entities (id) ON DELETE SET NULL,
+  status        TEXT NOT NULL CHECK (status IN ('active','ended','abandoned')),
+  context_kind  TEXT NOT NULL CHECK (context_kind IN ('micro','meso','macro','eco','platform')),
+  started_at    TIMESTAMPTZ NOT NULL,
+  ended_at      TIMESTAMPTZ,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_sessions_researcher ON crie_sessions (researcher);
+CREATE INDEX idx_crie_sessions_entity ON crie_sessions (entity_id);
+CREATE INDEX idx_crie_sessions_status ON crie_sessions (status);
+
+-- ---------------------------------------------------------------------------
+-- crie_session_goals
+-- The intent a session serves (goal type vocabulary from types/crie/context).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_session_goals (
+  id          UUID NOT NULL DEFAULT gen_random_uuid(),
+  session_id  UUID NOT NULL REFERENCES crie_sessions (id) ON DELETE CASCADE,
+  goal_type   TEXT NOT NULL CHECK (goal_type IN (
+              'explore','draft','analyse','review','plan','verify','learn','administrative'
+            )),
+  statement   TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_session_goals_session ON crie_session_goals (session_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_context_packs
+-- An assembled, bounded, weighted operative context for an interaction (Ch. 5).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_context_packs (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  entity_id       UUID REFERENCES crie_entities (id) ON DELETE CASCADE,
+  session_id      UUID REFERENCES crie_sessions (id) ON DELETE CASCADE,
+  context_kind    TEXT NOT NULL CHECK (context_kind IN ('micro','meso','macro','eco','platform')),
+  budget_limit    INTEGER NOT NULL DEFAULT 1 CHECK (budget_limit >= 1),
+  budget_used     INTEGER NOT NULL DEFAULT 0,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_context_packs_entity ON crie_context_packs (entity_id);
+CREATE INDEX idx_crie_context_packs_session ON crie_context_packs (session_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_context_elements
+-- A single provenance-bearing element inside a context pack.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_context_elements (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  pack_id         UUID NOT NULL REFERENCES crie_context_packs (id) ON DELETE CASCADE,
+  source_type     TEXT NOT NULL,
+  source_id       TEXT NOT NULL,
+  relevance_weight NUMERIC NOT NULL DEFAULT 0 CHECK (relevance_weight >= 0 AND relevance_weight <= 1),
+  confidence      NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  content         TEXT NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_context_elements_pack ON crie_context_elements (pack_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_workspaces
+-- The researcher's persistent research surface (Ch. 7).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_workspaces (
+  id          UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id     TEXT NOT NULL,
+  researcher  TEXT NOT NULL,
+  researcher_name TEXT,
+  version     INTEGER NOT NULL DEFAULT 1,
+  deleted_at  TIMESTAMPTZ,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_workspaces_researcher ON crie_workspaces (researcher);
+
+-- ---------------------------------------------------------------------------
+-- crie_workspace_panes
+-- A pane within the workspace (documents, advisory, agents, memory, ...).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_workspace_panes (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  workspace_id  UUID NOT NULL REFERENCES crie_workspaces (id) ON DELETE CASCADE,
+  pane_kind     TEXT NOT NULL CHECK (pane_kind IN (
+                'documents','advisory','agents','memory','context','conversation'
+              )),
+  title         TEXT NOT NULL,
+  open          BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_workspace_panes_workspace ON crie_workspace_panes (workspace_id);
+CREATE INDEX idx_crie_workspace_panes_kind ON crie_workspace_panes (pane_kind);
+
+-- ---------------------------------------------------------------------------
+-- crie_open_documents
+-- A document open in a workspace, bound to a pane.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_open_documents (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  workspace_id  UUID NOT NULL REFERENCES crie_workspaces (id) ON DELETE CASCADE,
+  document_id   TEXT NOT NULL,
+  pane_id       UUID REFERENCES crie_workspace_panes (id) ON DELETE SET NULL,
+  focus_state   TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_open_documents_workspace ON crie_open_documents (workspace_id);
+CREATE INDEX idx_crie_open_documents_document ON crie_open_documents (document_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_selected_passages
+-- The currently active passage/selection inside an open document.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_selected_passages (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  open_document_id UUID NOT NULL REFERENCES crie_open_documents (id) ON DELETE CASCADE,
+  chunk_id        TEXT NOT NULL,
+  start_offset    INTEGER NOT NULL DEFAULT 0,
+  end_offset      INTEGER NOT NULL DEFAULT 0,
+  note            TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_selected_passages_document ON crie_selected_passages (open_document_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_memory_items
+-- A provenance-bearing memory record with type and access policy (Ch. 63).
+-- Access is consent-gated in the memory engine; subtype-specific fields are
+-- nullable and only meaningful for their memory type.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_memory_items (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  owner               TEXT NOT NULL,
+  owner_name          TEXT,
+  memory_type         TEXT NOT NULL CHECK (memory_type IN (
+                      'short-term','long-term','institutional','research',
+                      'learner','contextual','episodic','semantic'
+                    )),
+  title               TEXT,
+  content             TEXT NOT NULL,
+  access_level        TEXT NOT NULL DEFAULT 'read-write' CHECK (access_level IN (
+                      'read','write','read-write','none'
+                    )),
+  scope_id            TEXT,
+  session_id          TEXT,
+  happened_at         TIMESTAMPTZ,
+  context_ref         TEXT,
+  institution_id      TEXT,
+  research_entity_id  TEXT,
+  context_pack_id     TEXT,
+  source_memory_item_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  consolidated        BOOLEAN NOT NULL DEFAULT FALSE,
+  consolidation_id    TEXT,
+  ephemeral           BOOLEAN NOT NULL DEFAULT FALSE,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_memory_items_owner ON crie_memory_items (owner);
+CREATE INDEX idx_crie_memory_items_type ON crie_memory_items (memory_type);
+CREATE INDEX idx_crie_memory_items_entity ON crie_memory_items (research_entity_id);
+CREATE INDEX idx_crie_memory_items_session ON crie_memory_items (session_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_memory_consolidations
+-- A roll-forward consolidation checkpoint of short-term memory.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_memory_consolidations (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  owner           TEXT NOT NULL,
+  source_memory_item_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  rule            TEXT,
+  consolidated_at TIMESTAMPTZ NOT NULL,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_memory_consolidations_owner ON crie_memory_consolidations (owner);
+
+-- ---------------------------------------------------------------------------
+-- crie_decisions
+-- A decision with objectives, constraints, and an accountable human authority.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_decisions (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  authority     TEXT NOT NULL,
+  authority_name TEXT,
+  capability    TEXT NOT NULL CHECK (capability IN (
+                'recommendation','optimisation','prediction','planning',
+                'institutional-decision-support'
+              )),
+  frame         TEXT NOT NULL,
+  objectives    TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  constraints   TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  status        TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','evaluated','recorded','closed')),
+  chosen_option_id TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_decisions_authority ON crie_decisions (authority);
+CREATE INDEX idx_crie_decisions_capability ON crie_decisions (capability);
+
+-- ---------------------------------------------------------------------------
+-- crie_decision_options
+-- A scored option within a decision.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_decision_options (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  decision_id   UUID NOT NULL REFERENCES crie_decisions (id) ON DELETE CASCADE,
+  crie_id       TEXT NOT NULL,
+  description   TEXT NOT NULL,
+  score         NUMERIC NOT NULL DEFAULT 0 CHECK (score >= 0 AND score <= 1),
+  tradeoffs     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  chosen        BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_decision_options_decision ON crie_decision_options (decision_id);
+
+-- ============================================================================
+-- CRIE Group 2 — Derived Intelligence (trust, search, institution, federation)
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- crie_trust_scores
+-- A derived, calibrated trust score for an entity (TrustEntityType vocabulary).
+-- Trust is always derived in the engine; this table is a cache, never
+-- authoritative.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_trust_scores (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  entity_type   TEXT NOT NULL CHECK (entity_type IN (
+                'researcher','institution','journal','conference','publisher','reviewer'
+              )),
+  entity_id     TEXT NOT NULL,
+  entity_name   TEXT,
+  score         NUMERIC NOT NULL DEFAULT 0 CHECK (score >= 0 AND score <= 1),
+  confidence    NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  source_count  INTEGER NOT NULL DEFAULT 0,
+  freshness     TIMESTAMPTZ,
+  recorded_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_trust_scores_entity ON crie_trust_scores (entity_type, entity_id);
+CREATE INDEX idx_crie_trust_scores_score ON crie_trust_scores (score);
+
+-- ---------------------------------------------------------------------------
+-- crie_verification_evidence
+-- A single piece of evidence contributing to a trust/verification derivation.
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_verification_evidence (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  trust_score_id UUID REFERENCES crie_trust_scores (id) ON DELETE CASCADE,
+  entity_type   TEXT NOT NULL CHECK (entity_type IN (
+                'researcher','institution','journal','conference','publisher','reviewer'
+              )),
+  entity_id     TEXT NOT NULL,
+  label         TEXT NOT NULL,
+  detail        TEXT,
+  status        TEXT NOT NULL CHECK (status IN ('verified','pending','in-review','failed')),
+  provider      TEXT,
+  weight        NUMERIC NOT NULL DEFAULT 1 CHECK (weight >= 0),
+  verified_at   TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id)
+);
+
+CREATE INDEX idx_crie_verification_evidence_entity ON crie_verification_evidence (entity_type, entity_id);
+CREATE INDEX idx_crie_verification_evidence_trust ON crie_verification_evidence (trust_score_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_search_index_entries
+-- A tokenised index entry over a CRIE graph node (search engine, E-26).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_search_index_entries (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  entity_class  TEXT NOT NULL,
+  entity_id     TEXT NOT NULL,
+  title         TEXT NOT NULL,
+  description   TEXT,
+  tokens        JSONB NOT NULL DEFAULT '[]'::JSONB,
+  confidence    NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  facet         TEXT,
+  indexed_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_search_index_entity ON crie_search_index_entries (entity_class, entity_id);
+CREATE INDEX idx_crie_search_index_facet ON crie_search_index_entries (facet);
+
+-- ---------------------------------------------------------------------------
+-- crie_enterprise_models
+-- The institution-level cognitive model (Ch. 59).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_enterprise_models (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  institution_id  TEXT NOT NULL,
+  strategic_goals TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  strength_areas  TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  research_entity_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  version         INTEGER NOT NULL DEFAULT 1,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_enterprise_models_institution ON crie_enterprise_models (institution_id);
+
+-- ---------------------------------------------------------------------------
+-- crie_institutional_assets
+-- A governed institutional knowledge asset (IKOS, Ch. 60).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_institutional_assets (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  institution_id TEXT NOT NULL,
+  asset_kind    TEXT NOT NULL CHECK (asset_kind IN (
+                'dataset','report','curriculum','methodology','patent','know-how','repository'
+              )),
+  title         TEXT NOT NULL,
+  access_class  TEXT NOT NULL CHECK (access_class IN (
+                'public','institution','collaborators','researcher','private'
+              )),
+  consent_scope TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  curator       TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_institutional_assets_institution ON crie_institutional_assets (institution_id);
+CREATE INDEX idx_crie_institutional_assets_kind ON crie_institutional_assets (asset_kind);
+CREATE INDEX idx_crie_institutional_assets_access ON crie_institutional_assets (access_class);
+
+-- ---------------------------------------------------------------------------
+-- crie_federation_contracts
+-- The agreement governing a federation relationship (Ch. 66).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_federation_contracts (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  institution_id      TEXT NOT NULL,
+  member_institution_id TEXT NOT NULL,
+  contract_type       TEXT NOT NULL CHECK (contract_type IN (
+                      'research-data','aggregate-analytics','knowledge-exchange'
+                    )),
+  status              TEXT NOT NULL CHECK (status IN ('negotiating','active','suspended','terminated')),
+  data_scope          TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  consent_scope       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  sovereignty_clauses TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_federation_contracts_institution ON crie_federation_contracts (institution_id);
+CREATE INDEX idx_crie_federation_contracts_status ON crie_federation_contracts (status);
+
+-- ---------------------------------------------------------------------------
+-- crie_federation_exchanges
+-- A governed exchange between sovereign members (query/contribution/...).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_federation_exchanges (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  contract_id   UUID NOT NULL REFERENCES crie_federation_contracts (id) ON DELETE CASCADE,
+  exchange_type TEXT NOT NULL CHECK (exchange_type IN ('query','contribution','aggregate','signal')),
+  payload_ref   TEXT NOT NULL,
+  consent_scope TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  confidence    NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_federation_exchanges_contract ON crie_federation_exchanges (contract_id);
+CREATE INDEX idx_crie_federation_exchanges_type ON crie_federation_exchanges (exchange_type);
+
+-- ---------------------------------------------------------------------------
+-- crie_member_sovereignty
+-- The sovereignty boundaries of a federation member (reserved/never-shared).
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_member_sovereignty (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  institution_id      TEXT NOT NULL,
+  governing_contract_ids TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  reserved_rights     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  shared_signals      TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  never_shared        TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (institution_id)
+);
+
+CREATE INDEX idx_crie_member_sovereignty_institution ON crie_member_sovereignty (institution_id);
+
+-- ============================================================================
+-- CRIE Persistence Target Tables (Mission 004-F Wave 4 — Groups 3 through 12)
+-- Mirrors the persistence layer in `lib/crie/db/*`: one `crie_` table per
+-- repository/seed domain so the in-memory store maps 1:1 to the production
+-- target schema. Conventions follow Groups 1 & 2 above: UUID PKs, stable
+-- `crie_id` UNIQUE columns, `version` + `deleted_at` soft-delete/versioning on
+-- entity-like records, `created_at`/`updated_at` audit timestamps, and CHECK
+-- vocabularies matched to the TypeScript types in `types/crie/*`.
+-- ============================================================================
+
+-- ---------------------------------------------------------------------------
+-- Group 3 — Knowledge Graph & RKG (crie_kg_entities, crie_kg_relations)
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_kg_entities (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  graph_id      TEXT,
+  label         TEXT NOT NULL,
+  entity_class  TEXT NOT NULL CHECK (entity_class IN (
+                'people','organisations','works','venues','concepts','claims',
+                'evidence','methods','grants','events','places','terms'
+              )),
+  attributes    JSONB NOT NULL DEFAULT '{}'::JSONB,
+  provenance    JSONB NOT NULL DEFAULT '[]'::JSONB,
+  confidence    NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  lifecycle_state TEXT NOT NULL DEFAULT 'proposed' CHECK (lifecycle_state IN (
+                'proposed','confirmed','deprecated','superseded'
+              )),
+  owner         TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_kg_entities_class ON crie_kg_entities (entity_class);
+CREATE INDEX idx_crie_kg_entities_graph ON crie_kg_entities (graph_id);
+CREATE INDEX idx_crie_kg_entities_owner ON crie_kg_entities (owner);
+CREATE INDEX idx_crie_kg_entities_lifecycle ON crie_kg_entities (lifecycle_state);
+
+CREATE TABLE crie_kg_relations (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  graph_id      TEXT,
+  subject       JSONB NOT NULL DEFAULT '{}'::JSONB,
+  object        JSONB NOT NULL DEFAULT '{}'::JSONB,
+  predicate     TEXT NOT NULL,
+  label         TEXT,
+  strength      NUMERIC NOT NULL DEFAULT 0 CHECK (strength >= 0 AND strength <= 1),
+  confidence    NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  provenance    JSONB NOT NULL DEFAULT '[]'::JSONB,
+  valid_from    TIMESTAMPTZ,
+  valid_to      TIMESTAMPTZ,
+  owner         TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_kg_relations_predicate ON crie_kg_relations (predicate);
+CREATE INDEX idx_crie_kg_relations_graph ON crie_kg_relations (graph_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 4 — Reasoning (crie_reasoning_traces)
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_reasoning_traces (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  label             TEXT NOT NULL,
+  paradigm          TEXT NOT NULL CHECK (paradigm IN (
+                    'deductive','inductive','abductive','analogical',
+                    'causal','graph-based'
+                  )),
+  status            TEXT NOT NULL DEFAULT 'running' CHECK (status IN (
+                    'planned','running','complete','invalidated'
+                  )),
+  conclusion        TEXT,
+  traces            JSONB NOT NULL DEFAULT '[]'::JSONB,
+  arguments         JSONB NOT NULL DEFAULT '[]'::JSONB,
+  explanation       TEXT,
+  confidence_value  NUMERIC,
+  research_entity_id TEXT,
+  owner             TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_reasoning_traces_paradigm ON crie_reasoning_traces (paradigm);
+CREATE INDEX idx_crie_reasoning_traces_entity ON crie_reasoning_traces (research_entity_id);
+CREATE INDEX idx_crie_reasoning_traces_status ON crie_reasoning_traces (status);
+
+-- ---------------------------------------------------------------------------
+-- Group 5 — References, citations & evidence
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_references (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  title           TEXT NOT NULL,
+  identifier_kind TEXT CHECK (identifier_kind IN ('doi','orcid','url','isbn','handle')),
+  identifier      TEXT,
+  authors         JSONB NOT NULL DEFAULT '[]'::JSONB,
+  venue           TEXT,
+  year            INTEGER,
+  confidence_value NUMERIC,
+  confidence      NUMERIC,
+  provenance      JSONB NOT NULL DEFAULT '[]'::JSONB,
+  owner           TEXT,
+  version         INTEGER NOT NULL DEFAULT 1,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_references_title ON crie_references (title);
+CREATE INDEX idx_crie_references_identifier ON crie_references (identifier_kind, identifier);
+
+CREATE TABLE crie_citations (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  label           TEXT NOT NULL,
+  citing_document_id TEXT,
+  reference_id    TEXT,
+  citation_style  TEXT,
+  intent          TEXT CHECK (intent IN ('support','contrast','background','method','extension')),
+  confidence_value NUMERIC,
+  confidence      NUMERIC,
+  provenance      JSONB NOT NULL DEFAULT '[]'::JSONB,
+  owner           TEXT,
+  version         INTEGER NOT NULL DEFAULT 1,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_citations_reference ON crie_citations (reference_id);
+CREATE INDEX idx_crie_citations_style ON crie_citations (citation_style);
+
+CREATE TABLE crie_citation_contexts (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  citation_id   TEXT,
+  chunk_id      TEXT,
+  intent        TEXT CHECK (intent IN ('support','contrast','background','method','extension')),
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_citation_contexts_citation ON crie_citation_contexts (citation_id);
+
+CREATE TABLE crie_evidence_records (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  label             TEXT NOT NULL,
+  evidence_type     TEXT NOT NULL CHECK (evidence_type IN (
+                    'data','experiment','observation','reference','simulation'
+                  )),
+  summary           TEXT,
+  provenance        JSONB NOT NULL DEFAULT '[]'::JSONB,
+  confidence_value  NUMERIC,
+  confidence        NUMERIC,
+  research_entity_id TEXT,
+  document_id       TEXT,
+  chunk_id          TEXT,
+  status            TEXT,
+  owner             TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_evidence_records_type ON crie_evidence_records (evidence_type);
+CREATE INDEX idx_crie_evidence_records_entity ON crie_evidence_records (research_entity_id);
+
+CREATE TABLE crie_claims (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  label             TEXT NOT NULL,
+  claim_type        TEXT,
+  confidence        NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  lifecycle_state   TEXT NOT NULL DEFAULT 'proposed' CHECK (lifecycle_state IN (
+                    'proposed','confirmed','deprecated','superseded'
+                  )),
+  research_entity_id TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_claims_entity ON crie_claims (research_entity_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 6 — Evidence assessment, literature, gaps & novelty
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_evidence_assessments (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  claim_id      TEXT,
+  evidence_id   TEXT,
+  assessment    TEXT NOT NULL CHECK (assessment IN (
+                'supports','contradicts','neutral','refutes'
+              )),
+  strength      NUMERIC NOT NULL DEFAULT 0 CHECK (strength >= 0 AND strength <= 1),
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_evidence_assessments_claim ON crie_evidence_assessments (claim_id);
+CREATE INDEX idx_crie_evidence_assessments_evidence ON crie_evidence_assessments (evidence_id);
+
+CREATE TABLE crie_contradictions (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  claim_a_id        TEXT,
+  claim_b_id        TEXT,
+  severity          TEXT CHECK (severity IN ('low','medium','high','critical')),
+  resolution_state  TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_contradictions_a ON crie_contradictions (claim_a_id);
+CREATE INDEX idx_crie_contradictions_b ON crie_contradictions (claim_b_id);
+
+CREATE TABLE crie_literature_searches (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  label               TEXT NOT NULL,
+  researcher_username TEXT,
+  research_entity_id  TEXT,
+  status              TEXT NOT NULL DEFAULT 'planned' CHECK (status IN (
+                      'planned','running','complete'
+                    )),
+  query               TEXT,
+  filters             JSONB NOT NULL DEFAULT '{}'::JSONB,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_literature_searches_researcher ON crie_literature_searches (researcher_username);
+CREATE INDEX idx_crie_literature_searches_status ON crie_literature_searches (status);
+
+CREATE TABLE crie_research_gaps (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  label               TEXT NOT NULL,
+  description         TEXT,
+  gap_type            TEXT,
+  status              TEXT,
+  research_entity_id  TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_research_gaps_entity ON crie_research_gaps (research_entity_id);
+
+CREATE TABLE crie_novelty_assessments (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  label               TEXT NOT NULL,
+  research_entity_id  TEXT,
+  novelty_score       NUMERIC NOT NULL DEFAULT 0 CHECK (novelty_score >= 0 AND novelty_score <= 1),
+  confidence          NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  rationale           TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_novelty_assessments_entity ON crie_novelty_assessments (research_entity_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 8 — Ethics, writing & supervision
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_ethics_reviews (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  research_entity_id  TEXT,
+  review_kind         TEXT,
+  status              TEXT NOT NULL DEFAULT 'in-progress' CHECK (status IN (
+                      'in-progress','submitted','approved','rejected'
+                    )),
+  owner               TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_ethics_reviews_entity ON crie_ethics_reviews (research_entity_id);
+CREATE INDEX idx_crie_ethics_reviews_status ON crie_ethics_reviews (status);
+
+CREATE TABLE crie_ethics_decisions (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  ethics_review_id  TEXT,
+  decision          TEXT NOT NULL,
+  rationale         TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_ethics_decisions_review ON crie_ethics_decisions (ethics_review_id);
+
+CREATE TABLE crie_writing_drafts (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  research_entity_id  TEXT,
+  draft_type          TEXT,
+  title               TEXT NOT NULL,
+  content             TEXT,
+  word_count          INTEGER,
+  owner               TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_writing_drafts_entity ON crie_writing_drafts (research_entity_id);
+
+CREATE TABLE crie_supervision_records (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  supervisor_username TEXT,
+  research_entity_id  TEXT,
+  status              TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_supervision_records_supervisor ON crie_supervision_records (supervisor_username);
+
+-- ---------------------------------------------------------------------------
+-- Group 9 — Publication, journal & conference matches, grants
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_publication_plans (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  research_entity_id  TEXT,
+  target_type         TEXT,
+  status              TEXT,
+  owner               TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_publication_plans_entity ON crie_publication_plans (research_entity_id);
+
+CREATE TABLE crie_journal_matches (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  publication_plan_id TEXT,
+  journal_id          TEXT,
+  fit_score           NUMERIC NOT NULL DEFAULT 0 CHECK (fit_score >= 0 AND fit_score <= 1),
+  confidence          NUMERIC NOT NULL DEFAULT 0 CHECK (confidence >= 0 AND confidence <= 1),
+  rationale           TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_journal_matches_plan ON crie_journal_matches (publication_plan_id);
+
+CREATE TABLE crie_conference_matches (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  research_entity_id  TEXT,
+  conference_id       TEXT,
+  fit_score           NUMERIC NOT NULL DEFAULT 0 CHECK (fit_score >= 0 AND fit_score <= 1),
+  rationale           TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_conference_matches_entity ON crie_conference_matches (research_entity_id);
+
+CREATE TABLE crie_grant_opportunities (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  title               TEXT NOT NULL,
+  funder              TEXT,
+  deadline            TIMESTAMPTZ,
+  status              TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_grant_opportunities_funder ON crie_grant_opportunities (funder);
+CREATE INDEX idx_crie_grant_opportunities_deadline ON crie_grant_opportunities (deadline);
+
+CREATE TABLE crie_grant_proposals (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  research_entity_id  TEXT,
+  grant_opportunity_id TEXT,
+  proposal_status     TEXT,
+  readiness           JSONB NOT NULL DEFAULT '{}'::JSONB,
+  owner               TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_grant_proposals_entity ON crie_grant_proposals (research_entity_id);
+CREATE INDEX idx_crie_grant_proposals_opp ON crie_grant_proposals (grant_opportunity_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 10 — Career, learning, mentorship & analytics
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_career_goals (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  title               TEXT NOT NULL,
+  goal_status         TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_career_goals_researcher ON crie_career_goals (researcher_username);
+
+CREATE TABLE crie_career_signals (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  signal_type         TEXT,
+  value               JSONB NOT NULL DEFAULT '{}'::JSONB,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_career_signals_researcher ON crie_career_signals (researcher_username);
+
+CREATE TABLE crie_learner_states (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  state               JSONB NOT NULL DEFAULT '{}'::JSONB,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_learner_states_researcher ON crie_learner_states (researcher_username);
+
+CREATE TABLE crie_learning_recommendations (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  recommendation_kind TEXT,
+  reason_evidence     JSONB NOT NULL DEFAULT '{}'::JSONB,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_learning_recommendations_researcher ON crie_learning_recommendations (researcher_username);
+
+CREATE TABLE crie_mentorship_guidance (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  mentor_username     TEXT,
+  mentee_username     TEXT,
+  guidance_kind       TEXT,
+  content             TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_mentorship_guidance_mentor ON crie_mentorship_guidance (mentor_username, mentee_username);
+
+CREATE TABLE crie_mentoring_sessions (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  mentor_username     TEXT,
+  mentee_username     TEXT,
+  topic               TEXT,
+  status              TEXT,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_mentoring_sessions_mentee ON crie_mentoring_sessions (mentee_username);
+
+CREATE TABLE crie_analytics_records (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  label         TEXT,
+  scope         TEXT NOT NULL CHECK (scope IN ('research','institution','platform')),
+  scope_id      TEXT,
+  indicators    JSONB NOT NULL DEFAULT '{}'::JSONB,
+  rollups       JSONB NOT NULL DEFAULT '{}'::JSONB,
+  kpis          JSONB NOT NULL DEFAULT '{}'::JSONB,
+  period_start  TIMESTAMPTZ,
+  period_end    TIMESTAMPTZ,
+  owner         TEXT,
+  version       INTEGER NOT NULL DEFAULT 1,
+  deleted_at    TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_analytics_records_scope ON crie_analytics_records (scope, scope_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 11 — Recommendations, agents, orchestration & session messages
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_recommendations (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  label             TEXT NOT NULL,
+  kind              TEXT NOT NULL,
+  target            TEXT,
+  summary           TEXT,
+  explanation       TEXT,
+  confidence_value  NUMERIC,
+  confidence        NUMERIC,
+  status            TEXT NOT NULL DEFAULT 'proposed' CHECK (status IN (
+                    'proposed','approved','dismissed','applied'
+                  )),
+  owner             TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_recommendations_kind ON crie_recommendations (kind);
+CREATE INDEX idx_crie_recommendations_status ON crie_recommendations (status);
+
+CREATE TABLE crie_agents (
+  id              UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id         TEXT NOT NULL,
+  agent_id        TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  description     TEXT,
+  status          TEXT NOT NULL DEFAULT 'ready' CHECK (status IN (
+                  'idle','ready','busy','blocked','decommissioned'
+                )),
+  autonomy_level  TEXT CHECK (autonomy_level IN ('l1','l2','l3','l4','l5')),
+  role            TEXT,
+  capabilities    JSONB NOT NULL DEFAULT '[]'::JSONB,
+  owner           TEXT,
+  version         INTEGER NOT NULL DEFAULT 1,
+  deleted_at      TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_agents_agent_id ON crie_agents (agent_id);
+CREATE INDEX idx_crie_agents_status ON crie_agents (status);
+
+CREATE TABLE crie_agent_tasks (
+  id                UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id           TEXT NOT NULL,
+  step              INTEGER,
+  agent_id          TEXT,
+  status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN (
+                    'pending','running','complete','failed','blocked','awaiting-approval'
+                  )),
+  priority          TEXT CHECK (priority IN ('low','medium','high','critical')),
+  requires_approval BOOLEAN NOT NULL DEFAULT FALSE,
+  dependency_ids    JSONB NOT NULL DEFAULT '[]'::JSONB,
+  plan_id           TEXT,
+  output            JSONB,
+  owner             TEXT,
+  version           INTEGER NOT NULL DEFAULT 1,
+  deleted_at        TIMESTAMPTZ,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_agent_tasks_plan ON crie_agent_tasks (plan_id);
+CREATE INDEX idx_crie_agent_tasks_agent ON crie_agent_tasks (agent_id);
+CREATE INDEX idx_crie_agent_tasks_status ON crie_agent_tasks (status);
+
+CREATE TABLE crie_orchestration_plans (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  label               TEXT NOT NULL,
+  researcher_username TEXT,
+  status              TEXT,
+  budget              JSONB NOT NULL DEFAULT '{}'::JSONB,
+  tasks               JSONB NOT NULL DEFAULT '[]'::JSONB,
+  version             INTEGER NOT NULL DEFAULT 1,
+  deleted_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_orchestration_plans_researcher ON crie_orchestration_plans (researcher_username);
+
+CREATE TABLE crie_session_messages (
+  id            UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id       TEXT NOT NULL,
+  session_id    TEXT,
+  role          TEXT NOT NULL CHECK (role IN ('researcher','assistant','agent','system')),
+  content       TEXT NOT NULL,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_session_messages_session ON crie_session_messages (session_id);
+
+-- ---------------------------------------------------------------------------
+-- Group 12 — Governance & audit (consent, policy audit, refusals)
+-- ---------------------------------------------------------------------------
+CREATE TABLE crie_consent_records (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  consent_scope       TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+  revocable           BOOLEAN NOT NULL DEFAULT TRUE,
+  granted_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  revoked_at          TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_consent_records_researcher ON crie_consent_records (researcher_username);
+
+CREATE TABLE crie_policy_audit (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  event_type          TEXT,
+  action              TEXT,
+  resource            TEXT,
+  resource_id         TEXT,
+  decision            TEXT,
+  rationale           TEXT,
+  policy_version      TEXT,
+  actor_type          TEXT,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_policy_audit_researcher ON crie_policy_audit (researcher_username);
+CREATE INDEX idx_crie_policy_audit_created ON crie_policy_audit (created_at);
+
+CREATE TABLE crie_refusals (
+  id                  UUID NOT NULL DEFAULT gen_random_uuid(),
+  crie_id             TEXT NOT NULL,
+  researcher_username TEXT,
+  requesting_agent_id TEXT,
+  refusal_reason      TEXT NOT NULL,
+  request             JSONB NOT NULL DEFAULT '{}'::JSONB,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (id),
+  UNIQUE (crie_id)
+);
+
+CREATE INDEX idx_crie_refusals_researcher ON crie_refusals (researcher_username);
