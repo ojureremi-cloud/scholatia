@@ -1,7 +1,8 @@
 import type { CrieRecord } from '@/types/crie';
 import * as P from '@/constants/placeholder-crie';
+import { getCrieDatabaseAdapter } from './adapter';
 import { addToIndex } from './indexes';
-import { getCrieStore, isSeeded, markSeeded, tableOf } from './store';
+import { isSeeded, markSeeded } from './store';
 import { nowIso } from './utils';
 
 /**
@@ -20,13 +21,12 @@ const SEED_AT = '2026-08-04T12:00:00.000Z';
 type SeedRow = Record<string, unknown> & { id: string };
 
 function insert(table: string, entries: readonly SeedRow[]): void {
-  const rows = tableOf(getCrieStore(), table);
   for (const entry of entries) {
     const owner = entry.owner as { username?: string } | undefined;
     const label = typeof entry.label === 'string' ? entry.label : undefined;
     const title = typeof entry.title === 'string' ? entry.title : label;
     const crieId = typeof entry.crieId === 'string' ? entry.crieId : entry.id;
-    rows.set(entry.id, {
+    getCrieDatabaseAdapter().write(table, {
       id: entry.id,
       crieId,
       version: typeof entry.version === 'number' ? entry.version : 1,

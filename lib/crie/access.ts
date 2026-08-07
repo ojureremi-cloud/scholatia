@@ -1,12 +1,13 @@
 /**
- * CRIE server read access — Mission 004-F (Wave 4).
+ * CRIE server read access — Mission 004-F (Wave 4), repository-backed (Mission 006).
  *
- * The read surface used by the CRIE pages. The in-memory store is seeded once
- * from the placeholder constants (dev seed only — `lib/crie/db/seed.ts` is the
- * single importer of `constants/placeholder-crie.ts`). These accessors expose
- * the original domain objects (`row.value`) to server components so the runtime
- * import graph never touches the placeholder constants directly. Write paths go
- * through the permission-enforcing services and the `/api/crie/**` routes.
+ * The read surface used by the CRIE pages. Every accessor reads through the
+ * repository registry (`lib/crie/db/persistence.ts`) rather than the raw
+ * seeded store: server components consume the seeded rows the same way they
+ * consumed the store — preserving the original domain objects (`row.value`) so
+ * the runtime import graph never touches the placeholder constants directly.
+ * Write paths go through the permission-enforcing services and the
+ * `/api/crie/**` routes.
  */
 import type {
   CareerGoal,
@@ -46,16 +47,18 @@ import type {
   SupervisionRecord,
   WritingDraft,
 } from '@/types/crie';
-import { ensureCrieSeeded } from './db/seed';
-import { getCrieStore, tableOf } from './db/store';
 import { nowIso } from './utils';
 import type { CrieRecord } from '@/types/crie';
+import { criePersistence } from './db/persistence';
+import type { CrieRepository } from './db/repository';
+
+function valueOfRow(row: CrieRecord): CrieRecord {
+  return ((row as CrieRecord).value as CrieRecord) ?? (row as CrieRecord);
+}
 
 function valuesOf(table: string): CrieRecord[] {
-  ensureCrieSeeded();
-  return [...tableOf(getCrieStore(), table).values()]
-    .filter((row) => !row.deletedAt)
-    .map((row) => ((row as CrieRecord).value as CrieRecord) ?? (row as CrieRecord));
+  const repository = criePersistence.repositories.get(table) as CrieRepository;
+  return repository.rawRows().map(valueOfRow);
 }
 
 function firstValueOf<T>(table: string): T | undefined {

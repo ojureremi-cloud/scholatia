@@ -31,6 +31,7 @@ import {
 import { ensureCrieSeeded } from './db/seed';
 import { queryIndex } from './db/indexes';
 import { listAudit } from './db/audit';
+import { runInTransaction } from './db/transactions';
 import {
   crieAgentRepository,
   crieAgentTaskRepository,
@@ -255,28 +256,30 @@ export class CrieGraphService extends CrieService {
   }
 
   createRelation(data: Record<string, unknown>, principal: AuthenticatedPrincipal): CrieRecord {
-    this.assertWrite(principal);
-    const subjectRef = data.subject as { crieId?: unknown };
-    const objectRef = data.object as { crieId?: unknown };
-    if (typeof subjectRef?.crieId !== 'string' || typeof objectRef?.crieId !== 'string') {
-      throw new CrieValidationError(
-        { subject: 'required', object: 'required' },
-        'A relation requires subject.crieId and object.crieId.',
-      );
-    }
-    const subject = crieKgEntityRepository.getByCrieId(subjectRef.crieId);
-    const object = crieKgEntityRepository.getByCrieId(objectRef.crieId);
-    if (!subject) {
-      throw new CrieValidationError({ subject: 'not_found' }, `Subject entity ${subjectRef.crieId} does not exist.`);
-    }
-    if (!object) {
-      throw new CrieValidationError({ object: 'not_found' }, `Object entity ${objectRef.crieId} does not exist.`);
-    }
-    this.validateInstitution(principal, data as CrieRecord);
-    return crieKgRelationRepository.create({
-      data: { ...data, owner: principal.username },
-      principal,
-    } as CrieCreateInput);
+    return runInTransaction(() => {
+      this.assertWrite(principal);
+      const subjectRef = data.subject as { crieId?: unknown };
+      const objectRef = data.object as { crieId?: unknown };
+      if (typeof subjectRef?.crieId !== 'string' || typeof objectRef?.crieId !== 'string') {
+        throw new CrieValidationError(
+          { subject: 'required', object: 'required' },
+          'A relation requires subject.crieId and object.crieId.',
+        );
+      }
+      const subject = crieKgEntityRepository.getByCrieId(subjectRef.crieId);
+      const object = crieKgEntityRepository.getByCrieId(objectRef.crieId);
+      if (!subject) {
+        throw new CrieValidationError({ subject: 'not_found' }, `Subject entity ${subjectRef.crieId} does not exist.`);
+      }
+      if (!object) {
+        throw new CrieValidationError({ object: 'not_found' }, `Object entity ${objectRef.crieId} does not exist.`);
+      }
+      this.validateInstitution(principal, data as CrieRecord);
+      return crieKgRelationRepository.create({
+        data: { ...data, owner: principal.username },
+        principal,
+      } as CrieCreateInput);
+    });
   }
 
   getRelation(id: string, principal: AuthenticatedPrincipal): CrieRecord {
@@ -314,31 +317,33 @@ export class CrieMemoryService extends CrieService {
   }
 
   consolidate(recordIds: string[], principal: AuthenticatedPrincipal): CrieRecord {
-    this.assertWrite(principal);
-    if (!recordIds.length) {
-      throw new CrieValidationError({ recordIds: 'required' }, 'consolidate requires at least one record id.');
-    }
-    const consolidated = recordIds.map((id) => this.repository.getOrThrow(id));
-    for (const record of consolidated) this.assertCanManage(principal, record);
-    const title = consolidated
-      .map((r) => String(r.content ?? r.crieId).slice(0, 64))
-      .join(' · ')
-      .slice(0, 200);
-    return crieReasoningRepository.create({
-      data: {
-        memoryType: 'consolidation',
-        content: title,
-        accessPolicy: 'private',
-        provenance: [{ kind: 'consolidation', refs: recordIds }],
-        sessionId: principal.username,
-        researchEntityId: null,
-        happenedAt: new Date().toISOString(),
-        owner: principal.username,
-        consolidated: true,
-        consolidationId: recordIds.join('+'),
-      },
-      principal,
-    } as CrieCreateInput);
+    return runInTransaction(() => {
+      this.assertWrite(principal);
+      if (!recordIds.length) {
+        throw new CrieValidationError({ recordIds: 'required' }, 'consolidate requires at least one record id.');
+      }
+      const consolidated = recordIds.map((id) => this.repository.getOrThrow(id));
+      for (const record of consolidated) this.assertCanManage(principal, record);
+      const title = consolidated
+        .map((r) => String(r.content ?? r.crieId).slice(0, 64))
+        .join(' · ')
+        .slice(0, 200);
+      return crieReasoningRepository.create({
+        data: {
+          memoryType: 'consolidation',
+          content: title,
+          accessPolicy: 'private',
+          provenance: [{ kind: 'consolidation', refs: recordIds }],
+          sessionId: principal.username,
+          researchEntityId: null,
+          happenedAt: new Date().toISOString(),
+          owner: principal.username,
+          consolidated: true,
+          consolidationId: recordIds.join('+'),
+        },
+        principal,
+      } as CrieCreateInput);
+    });
   }
 }
 
@@ -527,16 +532,18 @@ export class CrieWorkspaceService extends CrieService {
   }
 
   upsertOwn(data: Record<string, unknown>, principal: AuthenticatedPrincipal): CrieRecord {
-    this.assertWrite(principal);
-    const existing = this.getOwnWorkspace(principal);
-    if (existing) {
-      const patch = { ...data, researcher: principal.username };
-      return this.repository.update({ id: existing.id, patch, principal } as CrieUpdateInput);
-    }
-    return this.repository.create({
-      data: { ...data, researcher: principal.username },
-      principal,
-    } as CrieCreateInput);
+    return runInTransaction(() => {
+      this.assertWrite(principal);
+      const existing = this.getOwnWorkspace(principal);
+      if (existing) {
+        const patch = { ...data, researcher: principal.username };
+        return this.repository.update({ id: existing.id, patch, principal } as CrieUpdateInput);
+      }
+      return this.repository.create({
+        data: { ...data, researcher: principal.username },
+        principal,
+      } as CrieCreateInput);
+    });
   }
 }
 

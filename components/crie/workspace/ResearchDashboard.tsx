@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import type {
   ContextPack,
+  EntitySimilarity,
+  IntelligenceIndicator,
   KnowledgeGraph,
   MemoryItem,
   Recommendation,
   ResearchEntity,
+  ResearchRecommendation,
   ResearchSession as ResearchSessionModel,
   SessionMessage,
 } from '@/types/crie';
@@ -15,10 +18,16 @@ import { memoryStatistics } from '@/lib/crie/memory';
 import { CRIEStats } from '../core';
 import type { CRIEStat } from '../core';
 import { Panel, Stack, ConfidenceMeter, Chip } from '../primitives';
-import { formatNumber, formatPercent, graphEntityUrl, researchEntityUrl, crieResearchUrl, crieGraphUrl } from '../format';
+import { formatNumber, formatPercent, graphEntityUrl, kgEntityLabel, researchEntityUrl, crieResearchUrl, crieGraphUrl } from '../format';
 import { ResearchEntityCard } from './ResearchEntityCard';
 import { ResearchTimeline } from './ResearchTimeline';
 import { ResearchSession } from './ResearchSession';
+
+export type ResearchDashboardIntelligence = {
+  indicators: IntelligenceIndicator[];
+  nextRecommendation?: ResearchRecommendation;
+  similarEntities: EntitySimilarity[];
+};
 
 type ResearchDashboardProps = {
   entities: ResearchEntity[];
@@ -28,6 +37,7 @@ type ResearchDashboardProps = {
   sessionMessages?: SessionMessage[];
   context: ContextPack[];
   recommendation?: Recommendation;
+  intelligence?: ResearchDashboardIntelligence;
 };
 
 export function ResearchDashboard({
@@ -38,6 +48,7 @@ export function ResearchDashboard({
   sessionMessages = [],
   context,
   recommendation,
+  intelligence,
 }: ResearchDashboardProps) {
   const memoryStats = memoryStatistics(memoryItems);
   const graphStats = graphStatistics(graph);
@@ -102,6 +113,55 @@ export function ResearchDashboard({
             ) : (
               <p className="text-sm text-slate-500 dark:text-slate-400">No recommendation is available.</p>
             )}
+          </Panel>
+
+          <Panel eyebrow="Intelligence" title="Derived intelligence" icon="🧠">
+            {intelligence?.nextRecommendation ? (
+              <div className="rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">{intelligence.nextRecommendation.title}</p>
+                  <Chip tone="info">{intelligence.nextRecommendation.kind}</Chip>
+                </div>
+                <p className="mt-1 text-sm leading-6 text-slate-600 dark:text-slate-300">{intelligence.nextRecommendation.summary}</p>
+                <div className="mt-3">
+                  <ConfidenceMeter confidence={intelligence.nextRecommendation.confidence} />
+                </div>
+              </div>
+            ) : null}
+            {intelligence && intelligence.indicators.length > 0 ? (
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {intelligence.indicators.map((indicator) => (
+                  <div key={indicator.key} className="rounded-[1.25rem] border border-slate-200 p-3 dark:border-slate-700">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{indicator.label}</span>
+                      <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{formatPercent(indicator.value)}</span>
+                    </div>
+                    <div className="mt-2">
+                      <ConfidenceMeter confidence={indicator.confidence} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {intelligence && intelligence.similarEntities.length > 0 ? (
+              <div className="mt-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">Similar entities</p>
+                <ul className="mt-2 space-y-1">
+                  {intelligence.similarEntities.map((similarity) => {
+                    const entity = graph.entities.find((candidate) => candidate.crieId === similarity.entityB);
+                    if (!entity) return null;
+                    return (
+                      <li key={similarity.entityB} className="flex items-center justify-between gap-2">
+                        <Link href={graphEntityUrl(entity)} className="text-sm font-medium text-sky-600 hover:underline dark:text-sky-400">
+                          {kgEntityLabel(entity)}
+                        </Link>
+                        <span className="text-xs text-slate-500 dark:text-slate-400">{formatPercent(similarity.similarity)} similar</span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
           </Panel>
 
           <Panel eyebrow="Statistics" title="Graph snapshot" icon="📐">

@@ -328,3 +328,493 @@ export const crieAnalyticsRepository = new CrieRepository({
   definition: crieAnalyticsDefinition,
   defaultSort: nowDesc,
 });
+
+// ---------------------------------------------------------------------------
+// Context (crie_context_packs, crie_context_elements)
+// ---------------------------------------------------------------------------
+
+export const crieContextPackDefinition = definition({
+  table: 'crie_context_packs',
+  fields: ['label', 'contextKind', 'budgetLimit', 'budgetUsed', 'researchEntityId', 'elements'],
+  titleKey: 'label',
+  facetKey: 'contextKind',
+});
+
+export const crieContextPackRepository = new CrieRepository({
+  definition: crieContextPackDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieContextElementDefinition = definition({
+  table: 'crie_context_elements',
+  fields: ['label', 'sourceType', 'sourceId', 'relevanceWeight', 'content', 'provenance'],
+  titleKey: 'content',
+  descriptionKey: 'sourceType',
+  facetKey: 'sourceType',
+});
+
+export const crieContextElementRepository = new CrieRepository({
+  definition: crieContextElementDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Sessions (crie_sessions, crie_session_goals, crie_session_messages)
+// ---------------------------------------------------------------------------
+
+export const crieSessionDefinition = definition({
+  table: 'crie_sessions',
+  fields: ['label', 'researcher', 'workspaceId', 'goals', 'status', 'startedAt'],
+  titleKey: 'label',
+  facetKey: 'status',
+});
+
+export const crieSessionRepository = new CrieRepository({
+  definition: crieSessionDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieSessionGoalDefinition = definition({
+  table: 'crie_session_goals',
+  fields: ['label', 'sessionId', 'goalType', 'statement'],
+  titleKey: 'label',
+  facetKey: 'goalType',
+});
+
+export const crieSessionGoalRepository = new CrieRepository({
+  definition: crieSessionGoalDefinition,
+  defaultSort: createdAsc,
+});
+
+export const crieSessionMessageDefinition = definition({
+  table: 'crie_session_messages',
+  fields: ['sessionId', 'role', 'content', 'at'],
+  titleKey: 'content',
+  facetKey: 'role',
+});
+
+export const crieSessionMessageRepository = new CrieRepository({
+  definition: crieSessionMessageDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Integrity (crie_claims, crie_evidence_assessments, crie_contradictions)
+// ---------------------------------------------------------------------------
+
+export const crieClaimDefinition = definition({
+  table: 'crie_claims',
+  fields: ['label', 'claimType', 'statement', 'confidenceValue', 'documentChunkId', 'status'],
+  titleKey: 'label',
+  descriptionKey: 'statement',
+  facetKey: 'claimType',
+});
+
+export const crieClaimRepository = new CrieRepository({
+  definition: crieClaimDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieEvidenceAssessmentDefinition = definition({
+  table: 'crie_evidence_assessments',
+  fields: ['claimId', 'evidenceRecordId', 'relation', 'strength'],
+  searchable: false,
+});
+
+export const crieEvidenceAssessmentRepository = new CrieRepository({
+  definition: crieEvidenceAssessmentDefinition,
+  defaultSort: createdAsc,
+});
+
+export const crieContradictionDefinition = definition({
+  table: 'crie_contradictions',
+  fields: ['label', 'claimA', 'claimB', 'severity'],
+  titleKey: 'label',
+  facetKey: 'severity',
+});
+
+export const crieContradictionRepository = new CrieRepository({
+  definition: crieContradictionDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Citations (crie_citation_contexts)
+// ---------------------------------------------------------------------------
+
+export const crieCitationContextDefinition = definition({
+  table: 'crie_citation_contexts',
+  fields: ['label', 'citationId', 'chunkId', 'intent', 'quote'],
+  titleKey: 'label',
+  facetKey: 'intent',
+});
+
+export const crieCitationContextRepository = new CrieRepository({
+  definition: crieCitationContextDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Literature (crie_literature_searches, crie_research_gaps, crie_novelty_assessments)
+// ---------------------------------------------------------------------------
+
+export const crieLiteratureSearchDefinition = definition({
+  table: 'crie_literature_searches',
+  fields: ['label', 'researcher', 'researchEntityId', 'status', 'queries'],
+  titleKey: 'label',
+  facetKey: 'status',
+});
+
+export const crieLiteratureSearchRepository = new CrieRepository({
+  definition: crieLiteratureSearchDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieResearchGapDefinition = definition({
+  table: 'crie_research_gaps',
+  fields: ['label', 'gapType', 'statement', 'researchEntityId', 'status'],
+  titleKey: 'label',
+  descriptionKey: 'statement',
+  facetKey: 'gapType',
+});
+
+export const crieResearchGapRepository = new CrieRepository({
+  definition: crieResearchGapDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieNoveltyAssessmentDefinition = definition({
+  table: 'crie_novelty_assessments',
+  fields: ['label', 'researchEntityId', 'documentId', 'noveltyScore', 'confidenceValue', 'rationale'],
+  titleKey: 'label',
+  facetKey: 'documentId',
+});
+
+export const crieNoveltyAssessmentRepository = new CrieRepository({
+  definition: crieNoveltyAssessmentDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Governance (crie_consent_records, crie_policy_audit, crie_refusals)
+// ---------------------------------------------------------------------------
+
+export const crieConsentRecordDefinition = definition({
+  table: 'crie_consent_records',
+  fields: ['label', 'researcher', 'consentScope', 'granted', 'revocable', 'grantedAt', 'revokedAt', 'dataUse'],
+  titleKey: 'label',
+  facetKey: 'consentScope',
+});
+
+export const crieConsentRecordRepository = new CrieRepository({
+  definition: crieConsentRecordDefinition,
+  defaultSort: nowDesc,
+});
+
+export const criePolicyAuditDefinition = definition({
+  table: 'crie_policy_audit',
+  fields: ['label', 'actorType', 'actorId', 'eventType', 'payload', 'researcher'],
+  titleKey: 'label',
+  facetKey: 'eventType',
+});
+
+export const criePolicyAuditRepository = new CrieRepository({
+  definition: criePolicyAuditDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieRefusalDefinition = definition({
+  table: 'crie_refusals',
+  fields: ['label', 'researcher', 'refusalReason', 'explanation'],
+  titleKey: 'label',
+  facetKey: 'refusalReason',
+});
+
+export const crieRefusalRepository = new CrieRepository({
+  definition: crieRefusalDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Ethics (crie_ethics_reviews, crie_ethics_decisions)
+// ---------------------------------------------------------------------------
+
+export const crieEthicsReviewDefinition = definition({
+  table: 'crie_ethics_reviews',
+  fields: ['label', 'researchEntityId', 'reviewKind', 'status'],
+  titleKey: 'label',
+  facetKey: 'reviewKind',
+});
+
+export const crieEthicsReviewRepository = new CrieRepository({
+  definition: crieEthicsReviewDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieEthicsDecisionDefinition = definition({
+  table: 'crie_ethics_decisions',
+  fields: ['label', 'ethicsReviewId', 'decision', 'rationale', 'conditions', 'decidedBy'],
+  titleKey: 'label',
+  facetKey: 'decision',
+});
+
+export const crieEthicsDecisionRepository = new CrieRepository({
+  definition: crieEthicsDecisionDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Orchestration (crie_orchestration_plans)
+// ---------------------------------------------------------------------------
+
+export const crieOrchestrationPlanDefinition = definition({
+  table: 'crie_orchestration_plans',
+  fields: ['owner', 'intent', 'sessionId', 'budgets', 'tasks', 'status'],
+  titleKey: 'intent',
+  facetKey: 'status',
+});
+
+export const crieOrchestrationPlanRepository = new CrieRepository({
+  definition: crieOrchestrationPlanDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Publication (crie_publication_plans, crie_journal_matches, crie_conference_matches)
+// ---------------------------------------------------------------------------
+
+export const criePublicationPlanDefinition = definition({
+  table: 'crie_publication_plans',
+  fields: ['label', 'researchEntityId', 'owner', 'targetType', 'targets', 'status'],
+  titleKey: 'label',
+  facetKey: 'targetType',
+});
+
+export const criePublicationPlanRepository = new CrieRepository({
+  definition: criePublicationPlanDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieJournalMatchDefinition = definition({
+  table: 'crie_journal_matches',
+  fields: ['label', 'publicationPlanId', 'journalProfileId', 'fitScore', 'rationale', 'confidenceValue'],
+  titleKey: 'label',
+  facetKey: 'journalProfileId',
+});
+
+export const crieJournalMatchRepository = new CrieRepository({
+  definition: crieJournalMatchDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieConferenceMatchDefinition = definition({
+  table: 'crie_conference_matches',
+  fields: ['label', 'researchEntityId', 'conferenceId', 'fitScore', 'rationale', 'provenance', 'confidenceValue'],
+  titleKey: 'label',
+  facetKey: 'conferenceId',
+});
+
+export const crieConferenceMatchRepository = new CrieRepository({
+  definition: crieConferenceMatchDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Grants (crie_grant_opportunities, crie_grant_proposals)
+// ---------------------------------------------------------------------------
+
+export const crieGrantOpportunityDefinition = definition({
+  table: 'crie_grant_opportunities',
+  fields: ['label', 'funder', 'title', 'description', 'deadline', 'amount'],
+  titleKey: 'title',
+  facetKey: 'funder',
+});
+
+export const crieGrantOpportunityRepository = new CrieRepository({
+  definition: crieGrantOpportunityDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieGrantProposalDefinition = definition({
+  table: 'crie_grant_proposals',
+  fields: ['label', 'researchEntityId', 'grantOpportunityId', 'lead', 'sections'],
+  titleKey: 'label',
+  facetKey: 'grantOpportunityId',
+});
+
+export const crieGrantProposalRepository = new CrieRepository({
+  definition: crieGrantProposalDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Career (crie_career_goals, crie_career_signals)
+// ---------------------------------------------------------------------------
+
+export const crieCareerGoalDefinition = definition({
+  table: 'crie_career_goals',
+  fields: ['label', 'researcher', 'statement', 'horizonMonths', 'goalStatus'],
+  titleKey: 'label',
+  facetKey: 'goalStatus',
+});
+
+export const crieCareerGoalRepository = new CrieRepository({
+  definition: crieCareerGoalDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieCareerSignalDefinition = definition({
+  table: 'crie_career_signals',
+  fields: ['label', 'researcher', 'kind', 'statement', 'confidenceValue'],
+  titleKey: 'label',
+  facetKey: 'kind',
+});
+
+export const crieCareerSignalRepository = new CrieRepository({
+  definition: crieCareerSignalDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Learning (crie_learner_states, crie_learning_recommendations)
+// ---------------------------------------------------------------------------
+
+export const crieLearnerStateDefinition = definition({
+  table: 'crie_learner_states',
+  fields: ['label', 'researcher', 'mastery', 'misconceptions', 'progress', 'lifecycleStage'],
+  titleKey: 'label',
+  facetKey: 'lifecycleStage',
+});
+
+export const crieLearnerStateRepository = new CrieRepository({
+  definition: crieLearnerStateDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieLearningRecommendationDefinition = definition({
+  table: 'crie_learning_recommendations',
+  fields: ['label', 'researcher', 'recommendationKind', 'rationale', 'reasonEvidence', 'learningObjectId', 'confidenceValue'],
+  titleKey: 'label',
+  facetKey: 'recommendationKind',
+});
+
+export const crieLearningRecommendationRepository = new CrieRepository({
+  definition: crieLearningRecommendationDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Writing (crie_writing_drafts)
+// ---------------------------------------------------------------------------
+
+export const crieWritingDraftDefinition = definition({
+  table: 'crie_writing_drafts',
+  fields: ['label', 'researchEntityId', 'author', 'draftType', 'title', 'content', 'provenance', 'documentId', 'citations'],
+  titleKey: 'title',
+  facetKey: 'draftType',
+});
+
+export const crieWritingDraftRepository = new CrieRepository({
+  definition: crieWritingDraftDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Supervision & mentorship (crie_supervision_records, crie_mentorship_guidance, crie_mentoring_sessions)
+// ---------------------------------------------------------------------------
+
+export const crieSupervisionRecordDefinition = definition({
+  table: 'crie_supervision_records',
+  fields: ['label', 'supervisor', 'researchEntityId', 'startedAt', 'status', 'meetingsHeld'],
+  titleKey: 'label',
+  facetKey: 'status',
+});
+
+export const crieSupervisionRecordRepository = new CrieRepository({
+  definition: crieSupervisionRecordDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieMentorshipGuidanceDefinition = definition({
+  table: 'crie_mentorship_guidance',
+  fields: ['label', 'mentor', 'mentee', 'guidanceKind', 'content', 'rationale'],
+  titleKey: 'label',
+  facetKey: 'guidanceKind',
+});
+
+export const crieMentorshipGuidanceRepository = new CrieRepository({
+  definition: crieMentorshipGuidanceDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieMentoringSessionDefinition = definition({
+  table: 'crie_mentoring_sessions',
+  fields: ['label', 'mentor', 'mentee', 'heldAt', 'agenda', 'outcomes', 'followUp'],
+  titleKey: 'label',
+  facetKey: 'mentor',
+});
+
+export const crieMentoringSessionRepository = new CrieRepository({
+  definition: crieMentoringSessionDefinition,
+  defaultSort: nowDesc,
+});
+
+// ---------------------------------------------------------------------------
+// Workspace (crie_workspace_panes)
+// ---------------------------------------------------------------------------
+
+export const crieWorkspacePaneDefinition = definition({
+  table: 'crie_workspace_panes',
+  fields: ['workspaceId', 'paneKind', 'title', 'open'],
+  titleKey: 'title',
+  facetKey: 'paneKind',
+});
+
+export const crieWorkspacePaneRepository = new CrieRepository({
+  definition: crieWorkspacePaneDefinition,
+  defaultSort: createdAsc,
+});
+
+// ---------------------------------------------------------------------------
+// Federation (crie_federation_exchanges, crie_member_sovereignty)
+// ---------------------------------------------------------------------------
+
+export const crieFederationExchangeDefinition = definition({
+  table: 'crie_federation_exchanges',
+  fields: ['federationContractId', 'exchangeType', 'payloadRef', 'consentScope', 'confidence'],
+  titleKey: 'exchangeType',
+  facetKey: 'exchangeType',
+});
+
+export const crieFederationExchangeRepository = new CrieRepository({
+  definition: crieFederationExchangeDefinition,
+  defaultSort: nowDesc,
+});
+
+export const crieMemberSovereigntyDefinition = definition({
+  table: 'crie_member_sovereignty',
+  fields: ['institutionId', 'governingContractIds', 'reservedRights', 'sharedSignals', 'neverShared'],
+  titleKey: 'institutionId',
+  facetKey: 'institutionId',
+});
+
+export const crieMemberSovereigntyRepository = new CrieRepository({
+  definition: crieMemberSovereigntyDefinition,
+  defaultSort: createdAsc,
+});
+
+// ---------------------------------------------------------------------------
+// Identity (crie_said_identities)
+// ---------------------------------------------------------------------------
+
+export const crieSaidIdentityDefinition = definition({
+  table: 'crie_said_identities',
+  fields: ['principalKind', 'principalId', 'principalName', 'saidHash', 'verified'],
+  titleKey: 'principalName',
+  facetKey: 'principalKind',
+});
+
+export const crieSaidIdentityRepository = new CrieRepository({
+  definition: crieSaidIdentityDefinition,
+  defaultSort: createdAsc,
+});

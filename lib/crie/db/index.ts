@@ -7,10 +7,12 @@
  * contract lives in `lib/crie/db/queries.ts` (SQL fragments mirroring the
  * target schema in `db/schema.sql`).
  */
+export * from './adapter';
 export * from './audit';
 export * from './errors';
 export * from './indexes';
 export * from './pagination';
+export * from './persistence';
 export * from './queries';
 export * from './repository';
 export * from './repositories';

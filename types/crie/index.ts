@@ -30,6 +30,7 @@ export * from './innovation';
 export * from './career';
 export * from './mentorship';
 export * from './institution';
+export * from './intelligence';
 export * from './analytics';
 export * from './decision';
 export * from './prediction';
